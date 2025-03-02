@@ -1,0 +1,650 @@
+#!/bin/bash
+
+# Dependencies: yq, bash >= 5.1
+# BASH_VERSION 5.1 or higher is required to support 'wait -p'
+
+set -ueo pipefail        # exit on errors
+shopt -s inherit_errexit # exit on errors also in subshells
+shopt -s nullglob        # Return nothing if '*' does not expand
+
+# Global variables
+APP=${0##*/}
+SCRIPT=$(readlink -f "$0")
+VER=0.1
+
+PID_DIR="/run/$APP"
+PID="$PID_DIR/$APP.pid"
+
+FOREGROUND=0
+CONFIG_FILE_BASH=0
+
+# Begin shared part (client & server)
+
+# Show usage
+_usage() {
+	cat <<-USAGE
+		$APP $VER
+
+		Usage:
+		  $APP [OPTION] [COMMAND]
+
+		Options:
+		  -c, --config  Specify config file, e.g. '$APP -c /path/to/supervisor.yaml'.
+		  -h, --help    Show this help.
+
+		Commands:
+		  start           Start $APP as daemon.
+		  start <job>     Start job.
+		  stop            Stop $APP.
+		  stop  <job>     Stop job.
+		  restart         Restart daemon.
+		  restart <job>   Restart job.
+		  status          Show process status.
+		  log             Show continuously the $APP log.
+		  logs            Show continuously the $APP log + job logs.
+		  convert         Convert the YAML config to Bash. This allows the usage without the 'yq' binary,
+		                  e.g. inside a Docker container where 'yq' is not available.
+
+		If no command is provided, $APP will start in foreground.
+
+	USAGE
+	exit 0
+}
+if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
+ 	_usage
+fi
+
+# Check if config file exist and is readable
+_check_config_file() {
+	if [ -z "${CONFIG_FILE:-}" ]; then
+		echo "Error: No config file found:"
+		printf -- "   - %s\n" /etc/supervisor.yaml ~/.supervisor.yaml
+		echo
+		exit 1
+	fi
+	if [ ! -r "$CONFIG_FILE" ]; then
+		echo "Error: Configuration file '$CONFIG_FILE' is not accessible."
+		echo
+		exit 1
+	fi
+} >&2
+
+# Parse config file and create global variables
+_read_config_file() {
+	# Is the config file a Bash script (converted from yaml)?
+	if [ "$(head -c 7 "$CONFIG_FILE")" == "declare" ]; then
+		CONFIG_FILE_BASH=1
+		# shellcheck disable=1090
+		source "$CONFIG_FILE"
+		return 0
+	fi
+
+	# Check if 'yq' binary is available
+	if ! hash yq 2>/dev/null; then
+		echo "Error: 'yq' binary is not available. Get it from: https://github.com/mikefarah/yq"
+		echo
+		exit 1
+        fi >&2
+
+	__yq_info() {
+		echo "There are at least two, that have the same name."
+		echo "$APP depends on 'yq' from: https://github.com/mikefarah/yq"
+		echo "The Debian repository, for example, offers 'yq' from: https://github.com/kislyuk/yq"
+	}
+
+	# Check if the correct yq version
+	if [[ "$(yq --version)" != "yq (https://github.com/mikefarah/yq/)"* ]]; then
+		echo "Error: Wrong 'yq' program detected."
+		echo
+		__yq_info
+		echo
+		exit 1
+	fi >&2
+
+	# mapfile -t --> Remove a trailing DELIM from each line read (default newline)
+	# yq -r      --> unwrap scalar, print the value with no quotes, colors or comments
+
+	# Global config
+	LOG_FILE=$(yq -r '.supervisor.logfile // "/dev/stdout"' "$CONFIG_FILE")
+	SIGTERM_GRACE_PERIOD=$(yq -r '.supervisor.sigterm_grace_period // "2"' "$CONFIG_FILE")
+	KEEP_RUNNING=$(yq -r '.supervisor.keep_running // "off"' "$CONFIG_FILE")
+
+	# Job config
+	mapfile -t JOB_NAME      < <(yq -r '.jobs[].name    // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
+	mapfile -t JOB_COMMAND   < <(yq -r '.jobs[].command // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
+	mapfile -t JOB_RESTART   < <(yq -r '.jobs[].restart // "error"'       "$CONFIG_FILE") # Default value is       'error', instead of 'null'
+	mapfile -t JOB_LOGFILE   < <(yq -r '.jobs[].logfile // "/dev/stdout"' "$CONFIG_FILE") # Default value is '/dev/stdout', instead of 'null'
+	mapfile -t JOB_AUTOSTART < <(yq -r '.jobs[].autostart // "on"'        "$CONFIG_FILE") # Default value is          'on', instead of 'null'
+
+	# Some simple tests, to see if the parsing of the YAML file was successful
+	__show_error_and_exit() {
+		if [ "$1" == "ARRAY" ]; then
+			echo "Internal error: Wrong element count for array $2"
+		else
+			echo "Internal error: Variable '$2' is empty"
+		fi
+		echo
+		echo "The cause for that is most likely the usage of the wrong 'yq' program."
+		__yq_info
+		echo
+		exit 1
+	} >&2
+
+	[ -z "$LOG_FILE" ]                   && __show_error_and_exit "VAR" "LOG_FILE"
+	[ -z "$SIGTERM_GRACE_PERIOD" ]       && __show_error_and_exit "VAR" "SIGTERM_GRACE_PERIOD"
+	[ -z "$KEEP_RUNNING" ]               && __show_error_and_exit "VAR" "KEEP_RUNNING"
+
+	local COUNT=${#JOB_NAME[@]}
+	(( COUNT !=  ${#JOB_RESTART[@]} ))   && __show_error_and_exit "ARRAY" "JOB_RESTART"
+	(( COUNT !=  ${#JOB_LOGFILE[@]} ))   && __show_error_and_exit "ARRAY" "JOB_LOGFILE"
+	(( COUNT !=  ${#JOB_AUTOSTART[@]} )) && __show_error_and_exit "ARRAY" "JOB_AUTOSTART"
+
+	return 0
+}
+
+# Use global config if present
+[ -f /etc/supervisor.yaml ] && CONFIG_FILE=/etc/supervisor.yaml
+# Use user config if present
+[ -f ~/.supervisor.yaml ] && CONFIG_FILE=~/supervisor.yaml
+# Use config file from argument if given
+[[ ${1:-} =~ ^(-c|--config)$ ]] && CONFIG_FILE=${2:-} && shift 2 || true
+
+_check_config_file
+_read_config_file
+
+cd /
+mkdir -p "$PID_DIR"
+
+_status() {
+	printf -- '%(%F %T)T ' -1 # Print current date/time
+	printf -- '%s\n' "$1"     # Print status message
+}
+
+_stop_app() {
+	if [ -f "$PID_DIR/.sigterm" ]; then
+		# Prevent SIGTERM trap loop
+		exit
+	fi
+
+	if _is_app_running; then
+		local APP_PID
+		APP_PID=$(<"$PID")
+		_status "Stopping $APP ($APP_PID)"
+
+		# Send SIGTERM to all process groups (supervisor + jobs)
+		local i JOB_PIDS
+		for i in "$PID_DIR"/*.pid; do
+			if [ ! -f "$i.stopped" ]; then
+				JOB_PIDS+=(-"$(<"$i")")
+			fi
+		done
+		: >"$PID_DIR/.sigterm" # Prevent SIGTERM trap loop
+		kill -SIGTERM "${JOB_PIDS[@]}"
+
+		# Wait until stopped
+		while kill -0 "$APP_PID" 2>/dev/null; do
+			sleep 0.2
+		done
+		_status "$APP stopped ($APP_PID)"
+
+		[ -n "${1:-}" ] && return 0 # Return and start supervisor again if $1 is not empty
+		exit 0
+	else
+		echo "$APP is not running." >&2
+		echo >&2
+		exit 1
+	fi
+}
+
+_is_app_running() {
+	if [ -f "$PID" ]; then
+		if kill -0 "$(<"$PID")" &>/dev/null; then
+			return 0
+		else
+			_status "Removing orphan PID file."
+			rm -- "$PID"
+		fi
+	fi
+	return 1
+}
+
+_exit_if_app_is_already_running() {
+	if _is_app_running; then
+		echo "Error: $APP is already running"
+		echo
+		exit 1
+	fi >&2
+}
+
+_process_status() {
+	# {
+	# 	echo -e "NAME\tSTATUS\tPID"
+	# 	for i in "$PID_DIR"/*.pid; do
+	# 		printf '%s\t' "$(basename "${i:0:-4}")"
+	# 		if kill -0 "$(<"$i")" 2>/dev/null; then
+	# 			echo -e "running\t$(<"$i")"
+	# 		else
+	# 			echo "stopped"
+	# 		fi
+	# 	done
+	# } | column -t -s $'\t'
+	# echo
+
+	# Pure Bash, no column binary needed
+	local name=(NAME) status=(STATUS) pid=(PID)
+	for i in "$PID_DIR"/*.pid; do
+		name+=("$(basename "${i:0:-4}")")
+		if kill -0 "$(<"$i")" 2>/dev/null; then
+			status+=(running)
+			pid+=("$(<"$i")")
+		else
+			status+=(stopped)
+			pid+=("")
+		fi
+	done
+
+	local name_max=0
+	for i in "${name[@]}"; do
+		if (( ${#i} > name_max )); then
+			name_max=${#i}
+		fi
+	done
+	name_max=$(( name_max + 2))
+
+	local status_max=0
+	for i in "${status[@]}"; do
+		if (( ${#i} > status_max )); then
+			status_max=${#i}
+		fi
+	done
+	status_max=$(( status_max + 2))
+
+	for i in "${!name[@]}"; do
+		printf -- '%-*s'  $name_max   "${name[i]}"
+		printf -- '%-*s'  $status_max "${status[i]}"
+		printf -- '%-s\n'             "${pid[i]}"
+	done
+	echo
+
+	if ! _is_app_running; then
+		echo "Error: $APP is not running"
+		echo
+		return 1
+	fi >&2
+}
+
+_start_job_cli() {
+	local NAME=$1 JOB_PID
+
+	if [ -f "$PID_DIR/$NAME.pid" ]; then
+		JOB_PID=$(<"$PID_DIR/$NAME.pid")
+		if ! kill -0 "$JOB_PID" 2>/dev/null; then
+			# Change job state
+			rm -f "$PID_DIR/$NAME.pid.stopped"
+			: >"$PID_DIR/$NAME.pid.start"
+
+			_status "Starting $NAME"
+			# Send USR1 signal to server to trigger the job start
+			kill -SIGUSR1 "$(<$PID)"
+
+			# Wait until job has started
+			while [ -f "$PID_DIR/$NAME.pid.start" ]; do
+				sleep 0.2
+			done
+			_status "$NAME started ($(<$PID_DIR/$NAME.pid))"
+			return 0
+		else
+			echo -e "Error: $NAME is already running\n" >&2
+			return 1
+		fi
+	else
+		echo -e "Error: Job '$NAME' not found\n" >&2
+		return 1
+	fi
+}
+
+_stop_job() {
+	local NAME=$1 JOB_PID
+	local GRACE_PERIOD_START=$SECONDS
+
+	if [ -f "$PID_DIR/$NAME.pid" ]; then
+		JOB_PID=$(<"$PID_DIR/$NAME.pid")
+		if kill -0 -"$JOB_PID" 2>/dev/null; then
+			# Change job state
+			: >"$PID_DIR/$NAME.pid.stop"
+
+			# Send SIGTERM to job process group
+			_status "Stopping $NAME ($JOB_PID)"
+			kill -SIGTERM -"$JOB_PID"
+
+			# Wait until stopped
+			while kill -0 -"$JOB_PID" 2>/dev/null; do
+				if (( SECONDS - GRACE_PERIOD_START >= SIGTERM_GRACE_PERIOD )); then
+					_status "Process still running, sending SIGKILL: $NAME ($JOB_PID)"
+					kill -9 -"$JOB_PID"
+				fi
+				sleep 0.2
+			done
+			_status "$NAME stopped ($JOB_PID)"
+			return 0
+		else
+			echo -e "Error: $NAME is not running\n" >&2
+			return 1
+		fi
+	else
+		echo -e "Error: Job '$NAME' not found\n" >&2
+		return 1
+	fi
+}
+
+# Get command
+case "${1:-}" in
+	status)   _process_status; exit ;; # Process status
+
+	start)
+		# Start daemon or job?
+		if [ -z "${2:-}" ]; then
+			: # Start daemon if not running
+		else
+			# Start job
+			_is_app_running || { echo "Error: $APP is not running"; echo; exit 1; }
+			_start_job_cli "$2"
+			exit
+		fi
+		;;
+
+	stop)
+		# Stop app or job?
+		if [ -z "${2:-}" ]; then
+			_stop_app
+		else
+			_stop_job "$2"
+			exit
+		fi
+		;; # Stop daemon or interactive run
+
+	restart)
+		_is_app_running || { echo "Error: $APP is not running" >&2; echo; exit 1; }
+
+		# Restart app or job?
+		if [ -z "${2:-}" ]; then
+			LAST_ARG=$(tr '\0' '\n' < "/proc/$(<$PID)/cmdline" | tail -1)
+			if [ "$LAST_ARG" != "--daemon" ]; then
+				echo "Error: $APP is running in interactive mode, not as daemon."
+				echo
+				exit 1
+			fi >&2
+
+			_stop_app no-exit # Continue from here after the app was stopped to start again
+		else
+			if _stop_job "$2"; then
+				_start_job_cli "$2"
+				exit
+			else
+				exit 1
+			fi
+		fi
+		;;
+
+	convert)
+		if (( CONFIG_FILE_BASH == 1 )); then
+			echo "Error: Config file '$CONFIG_FILE' is already Bash"
+			echo
+			exit 1
+		fi >&2
+		echo -e "Converting '$CONFIG_FILE' to Bash --> '$CONFIG_FILE.sh'\n"
+		# Display the attributes and value of each variable
+		declare -p                               \
+			LOG_FILE                         \
+			SIGTERM_GRACE_PERIOD             \
+			JOB_NAME                         \
+			JOB_COMMAND                      \
+			JOB_RESTART                      \
+			JOB_LOGFILE                      \
+			JOB_AUTOSTART                    \
+			| sed 's/^declare /declare -g /' \
+			| tee "$CONFIG_FILE".sh
+		echo
+		exit
+		;;
+
+	log)
+		if [[ "$LOG_FILE" != "/dev/stdout" && -f "$LOG_FILE" ]]; then
+			# Show the last 10 log lines, then output appended data as the file grows
+			tail -n 10 -F "$LOG_FILE"
+			exit
+		else
+			echo "Error: No log file configured in '$CONFIG_FILE'" >&2
+			echo >&2
+			exit 1
+		fi
+		;;
+
+	logs)
+		LOGS=()
+
+		for i in "${JOB_LOGFILE[@]}"; do
+			if [ "$i" != "/dev/stdout" ]; then
+				LOGS+=("$i")
+			fi
+		done
+
+		if [[ "$LOG_FILE" != "/dev/stdout" && -f "$LOG_FILE" ]]; then
+			LOGS+=("$LOG_FILE")
+		fi
+
+		if (( ${#LOGS[@]} > 0 )); then
+			# Show the last 10 log lines, then output appended data as the files grow
+			tail -n 10 -F "${LOGS[@]}"
+			exit
+		else
+			echo "Error: No log files configured in '$CONFIG_FILE'" >&2
+			echo >&2
+			exit 1
+		fi
+		;;
+
+	--daemon) : ;; # Already in daemon mode --> Don't start again
+
+	# No argument? Run in foreground
+	"")
+		_exit_if_app_is_already_running
+		set -- "--daemon" # Pretend to be already in daemon mode --> don't start again
+		FOREGROUND=1      # Run interactively, not as daemon
+		;;
+
+	*)
+		echo "Error: Unknown argument '$1'" >&2
+		echo >&2
+		exit 1
+		;;
+esac
+
+# Begin server only part
+
+for i in "${!JOB_NAME[@]}"; do
+	if [[ -z "${JOB_NAME[i]}" || -z "${JOB_COMMAND[i]}" ]]; then
+		_status "Error: Parsing job $i failed. Check $CONFIG_FILE"
+		echo
+		exit 1
+	fi >&2
+done
+
+# Start daemon if not running
+if [ "$1" != "--daemon" ]; then
+	_exit_if_app_is_already_running
+	_status "Starting $APP"
+	setsid bash "$SCRIPT" --config "$CONFIG_FILE" "--daemon" &
+	echo $! > "$PID"
+	_status "$APP started ($!)"
+	exit 0
+fi
+
+_clean_up() {
+	local i
+	local GRACE_PERIOD_START=$SECONDS
+
+	while :; do
+		for i in "${!PIDS[@]}"; do
+			if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stopped" ]; then
+				if ! kill -0 -"${PIDS[i]}" 2>/dev/null; then
+					_status "Process terminated: ${JOB_NAME[i]} (${PIDS[i]})"
+					:> "$PID_DIR/${JOB_NAME[i]}.pid.stopped"
+					unset "PIDS[$i]"
+				else
+					if (( SECONDS - GRACE_PERIOD_START >= SIGTERM_GRACE_PERIOD )); then
+						_status "Process still running, sending SIGKILL: ${JOB_NAME[i]} (${PIDS[i]})"
+						kill -9 -"${PIDS[i]}"
+					fi
+				fi
+			fi
+		done
+		if (( ${#PIDS[@]} == 0 )); then
+			break
+		fi
+		if (( SECONDS - GRACE_PERIOD_START > SIGTERM_GRACE_PERIOD )); then
+			break;
+		fi
+		sleep 0.2
+	done
+
+	# Delete runtime files
+	rm    -- "$PID"
+	rm -f -- "$PID_DIR/"*
+	rm -f -- "$PID_DIR/.sigterm"
+
+	_status "$APP stopped ($$)"
+	exit 0
+}
+trap "      _clean_up" EXIT
+trap "echo; _stop_app" SIGINT
+trap "      _stop_app" SIGTERM
+
+# Running as daemon?
+if (( FOREGROUND == 0 )); then
+		# Ignore SIGHUP
+		trap "" SIGHUP
+
+		# Close STDIN file descriptor
+		exec 0>&-
+
+		# Redirect STDOUT & STDERR to log file
+		if [ "$LOG_FILE" == "/dev/stdout" ]; then
+			exec &>> /dev/null
+		else
+			exec &>> "$LOG_FILE"
+		fi
+else
+	echo $$ > "$PID"
+fi
+
+_status "$APP started ($$)"
+
+_start_job() {
+	local i=$1
+
+	# todo Check if JOB_LOGFILE is writeable
+	# setsid --> run each job in his own process group
+	setsid bash -c "${JOB_COMMAND[i]}" &>> "${JOB_LOGFILE[i]}" &
+	PIDS[i]=$!
+	echo "${PIDS[i]}" > "$PID_DIR/${JOB_NAME[i]}".pid
+	_status "Process started: ${JOB_NAME[i]} ($!)"
+}
+
+# Start jobs
+for i in "${!JOB_NAME[@]}"; do
+	if [ "${JOB_AUTOSTART[i]}" == "on" ]; then
+		# Autostart enabled
+		_start_job "$i"
+	else
+		# Autostart disabled
+		: >"$PID_DIR/${JOB_NAME[i]}".pid
+		: >"$PID_DIR/${JOB_NAME[i]}".pid.stopped
+	fi
+done
+
+# Start jobs, when USR1 signal is received
+_start_job_trap() {
+	local i j
+	# For jobs that have to be started, a JOB.pid.start file exists
+	for i in "$PID_DIR"/*.pid.start; do
+		# Search job
+		for j in "${!JOB_NAME[@]}"; do
+			if [ "${JOB_NAME[j]}" == "$(basename "${i:0:-10}")" ]; then
+				_start_job "$j"
+				rm -- "$i"
+				# break 2
+			fi
+		done
+	done
+}
+# Listen for USR1 signal
+trap _start_job_trap SIGUSR1
+
+# Kill a process group
+_kill_process_group() {
+	local i=$1
+	# Kill possible orphaned zombie processes
+	if kill -SIGKILL -"${PIDS[i]}" 2>/dev/null; then
+		_status "Orphaned zombie process detected. Sending SIGKILL to processes group ${PIDS[i]}"
+	else
+		: # process group does not exist --> no zombie processes --> good :)
+	fi
+}
+
+while :; do
+	if wait -n -p JOB_PID; then
+		JOB_STATUS=0
+	else
+		JOB_STATUS=$?
+	fi
+
+	if [ -z "${JOB_PID:-}" ]; then
+		if (( ${#PIDS[@]} == 0 )); then
+			if [ "$KEEP_RUNNING" == "off" ]; then
+				_status "No more processes are running. Stopping $APP"
+				exit 0
+			else
+				sleep 1
+				continue
+			fi
+		else
+			continue
+		fi
+	fi
+
+	for i in "${!PIDS[@]}"; do
+		if [ "${PIDS[i]}" == "$JOB_PID" ]; then
+			if [[ "${JOB_RESTART[i]}" == "error" && $JOB_STATUS -gt 0 || "${JOB_RESTART[i]}" == "on" ]]; then
+				if [[ "${JOB_RESTART[i]}" == "error" && $JOB_STATUS -gt 0 && ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
+					_status "Process failed: ${JOB_NAME[i]} (${PIDS[i]})"
+				else
+					_status "Process terminated: ${JOB_NAME[i]} (${PIDS[i]})"
+				fi
+
+				# Kill possible orphaned zombie processes
+				_kill_process_group "$i"
+
+				# Clean up job
+				: >"$PID_DIR/${JOB_NAME[i]}.pid"
+				unset "PIDS[$i]"
+
+				# Restart process
+				if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
+					_start_job "$i"
+				else
+					rm -- "$PID_DIR/${JOB_NAME[i]}.pid.stop"
+					: >"$PID_DIR/${JOB_NAME[i]}.pid.stopped"
+				fi
+			else
+				: >"$PID_DIR/${JOB_NAME[i]}.pid.stopped"
+				_status "Process terminated: ${JOB_NAME[i]} (${PIDS[i]})"
+
+				# Kill possible orphaned zombie processes
+				_kill_process_group "$i"
+
+				unset "PIDS[$i]"
+			fi
+		fi
+	done
+done

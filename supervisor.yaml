@@ -1,0 +1,24 @@
+supervisor:
+  logfile: "/var/log/supervisor.log"
+  sigterm_grace_period: 2
+  keep_running: "off"
+
+jobs:
+  - name: "job1"
+    command: "echo 'I will fail soon. But supervisor will restart me'; sleep 10; exit 1"
+    autostart: "on"
+    restart: "error"
+    logfile: "/var/log/job1.log"
+
+  - name: "job2"
+    command: "echo 'No restart for me on failure'; sleep 3; exit 1"
+    restart: "off"
+    logfile: /var/log/job2.log
+
+  - name: "job3"
+    command: "echo 'This output goes to the supervisor log file'"
+
+  - name: "job4"
+    command: "echo 'I was started manually'"
+    autostart: "off"
+    logfile: "/var/log/job4.log"
