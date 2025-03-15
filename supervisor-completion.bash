@@ -5,7 +5,7 @@ _supervisor_sh() {
 	prev=${COMP_WORDS[COMP_CWORD-1]}
 
 	if (( COMP_CWORD == 1 )); then
-		args="-c --config -h --help start stop restart status log logs convert"
+		args="-c --config -h --help start stop restart status fix log logs convert"
 		COMPREPLY=( $(compgen -W "$args" -- "$cur") )
 
 	elif (( COMP_CWORD == 2 )); then
