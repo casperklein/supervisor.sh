@@ -29,6 +29,7 @@ Commands:
   restart         Restart daemon.
   restart <job>   Restart job.
   status          Show process status.
+  fix             Fix unclean shutdown.
   log             Show continuously the supervisor.sh log.
   logs            Show continuously the supervisor.sh log + job logs.
   convert         Convert the YAML config to Bash. This allows the usage without the 'yq' binary,
