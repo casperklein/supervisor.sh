@@ -12,7 +12,7 @@ shopt -s nullglob        # Return nothing if '*' does not expand
 # Global variables
 APP=${0##*/}
 SCRIPT=$(readlink -f "$0")
-VER=0.2
+VER=0.3
 
 PID_DIR="/run/$APP"
 PID_FILE="$PID_DIR/$APP.pid"
@@ -642,7 +642,7 @@ _start_job() {
 		_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
 		_status "Error: Job '${JOB_NAME[i]}' could not be started. Log file '${JOB_LOGFILE[i]}' is not writeable."
 		# 0 is mandatory. Any 'return' executed within a trap handler, returns the exit status of the last command
-		# executed before the handler was invoked. In this case, 130 (128 + 10 [SIGUSR]).
+		# executed before the handler was invoked. In this case, 130 (128 + 10 [SIGUSR1]).
 		return 0
 	fi
 
