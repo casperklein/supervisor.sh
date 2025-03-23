@@ -66,6 +66,7 @@ supervisor:
   logfile: "/var/log/supervisor.log"
   sigterm_grace_period: 2
   keep_running: "off"
+  color: "\e[0;34m" # blue text color
 
 jobs:
   - name: "job1"
