@@ -690,8 +690,6 @@ _kill_process_group() {
 	# Kill possible orphaned zombie processes
 	if kill -SIGKILL -"${PIDS[i]}" 2>/dev/null; then
 		_status "Orphaned zombie process detected. Sending SIGKILL to processes group ${PIDS[i]}"
-	else
-		: # process group does not exist --> no zombie processes --> good :)
 	fi
 }
 
