@@ -47,6 +47,7 @@ Key                    | Required | Default       | Possible Values | Descriptio
 `logfile`              | No       | `/dev/stdout` | Valid file path | Log file for output (only for daemon mode)
 `sigterm_grace_period` | No       | `2`           | Any number      | Grace period in seconds until SIGKILL is send to processes that keeps running after SIGTERM
 `keep_running`         | No       | `off`         | `on`, `off`     | Exit supervisor when all jobs are stopped (`off`) or keep running (`on`)
+`color`                | No       |               | e.g. `\e[0;34m` | Sets the text color using an escape sequence for terminal colors. This only applies if running in the foreground.
 
 ### jobs
 

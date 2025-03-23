@@ -20,6 +20,7 @@ PID_FILE="$PID_DIR/$APP.pid"
 FOREGROUND=0
 CONFIG_FILE_BASH=0
 PIDS=()
+COLOR=""
 
 # Begin shared part (client & server)
 
@@ -109,9 +110,10 @@ _read_config_file() {
 	# yq -r      --> unwrap scalar, print the value with no quotes, colors or comments
 
 	# Global config
-	LOG_FILE=$(yq -r '.supervisor.logfile // "/dev/stdout"' "$CONFIG_FILE")
+	LOG_FILE=$(            yq -r '.supervisor.logfile // "/dev/stdout"'    "$CONFIG_FILE")
 	SIGTERM_GRACE_PERIOD=$(yq -r '.supervisor.sigterm_grace_period // "2"' "$CONFIG_FILE")
-	KEEP_RUNNING=$(yq -r '.supervisor.keep_running // "off"' "$CONFIG_FILE")
+	KEEP_RUNNING=$(        yq -r '.supervisor.keep_running // "off"'       "$CONFIG_FILE")
+	COLOR=$(               yq -r '.supervisor.color // ""'                 "$CONFIG_FILE")
 
 	# Job config
 	mapfile -t JOB_NAME      < <(yq -r '.jobs[].name    // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
@@ -160,8 +162,13 @@ cd /
 mkdir -p "$PID_DIR"
 
 _status() {
+	[ -n "$COLOR" ] && (( FOREGROUND == 1 )) && printf -- '%s' "$COLOR" # set color
+
 	printf -- '%(%F %T)T ' -1 # Print current date/time
 	printf -- '%s\n' "$1"     # Print status message
+
+	[ -n "$COLOR" ] && (( FOREGROUND == 1 )) && printf -- '%s' $'\e[0m' # reset color
+	return 0
 }
 
 _is_app_running() {
@@ -468,6 +475,8 @@ case "${1:-}" in
 		declare -p                               \
 			LOG_FILE                         \
 			SIGTERM_GRACE_PERIOD             \
+			KEEP_RUNNING                     \
+			COLOR                            \
 			JOB_NAME                         \
 			JOB_COMMAND                      \
 			JOB_RESTART                      \
