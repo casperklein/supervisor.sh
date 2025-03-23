@@ -168,9 +168,6 @@ _is_app_running() {
 	if [ -f "$PID_FILE" ]; then
 		if kill -0 "$(<"$PID_FILE")" 2>/dev/null; then
 			return 0
-		# else
-		# 	_status "Removing orphan PID file."
-		# 	rm -f "$PID_FILE"*
 		fi
 	fi
 	return 1
@@ -274,6 +271,7 @@ _stop_app() {
 	for i in "$PID_DIR"/*.pid; do
 		if [ ! -f "$i.stopped" ]; then
 			job_pids+=(-"$(<"$i")")
+			# Change job state
 			: >"$i.stop"
 		fi
 	done
@@ -355,8 +353,14 @@ _start_job_cli() {
 			while [ -f "$PID_DIR/$name.pid.start" ]; do
 				sleep 0.2
 			done
-			_status "$name started ($(<$PID_DIR/$name.pid))"
-			return 0
+
+			if [ ! -f "$PID_DIR/$name.pid.stopped" ]; then
+				_status "$name started ($(<"$PID_DIR/$name.pid"))"
+				return 0
+			else
+				_status "$name failed to start"
+				return 1
+			fi
 		else
 			echo -e "Error: $name is already running\n" >&2
 			return 1
@@ -604,22 +608,42 @@ fi
 
 _status "$APP started ($$)"
 
+_set_job_state() {
+	local state=$1 job_file=$2
+	case "$state" in
+		stopped)
+			: >"$job_file.pid"
+			rm -f "$job_file.pid."{start,stop}
+			: >"$job_file.pid.stopped"
+			;;
+
+		started)
+			rm -f "$job_file.pid."{start,stop,stopped}
+			;;
+	esac
+	return 0
+}
+
 _start_job() {
 	local i=$1
 
 	# Prevent restart loop if log file is not writeable
 	touch "${JOB_LOGFILE[i]}" 2>/dev/null || true # 'test -w' expects the file to exist. Create it first. Fails if log file is /dev/stdout
 	if [ ! -w "${JOB_LOGFILE[i]}" ]; then
-		: >"$PID_DIR/${JOB_NAME[i]}.pid"
-		: >"$PID_DIR/${JOB_NAME[i]}.pid.stop"
+		_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
 		_status "Error: Job '${JOB_NAME[i]}' could not be started. Log file '${JOB_LOGFILE[i]}' is not writeable."
-		return
+		# 0 is mandatory. Any 'return' executed within a trap handler, returns the exit status of the last command
+		# executed before the handler was invoked. In this case, 130 (128 + 10 [SIGUSR]).
+		return 0
 	fi
 
 	# setsid --> run each job in his own process group
 	setsid bash -c "${JOB_COMMAND[i]}" &>>"${JOB_LOGFILE[i]}" &
 	PIDS[i]=$!
 	echo "${PIDS[i]}" >"$PID_DIR/${JOB_NAME[i]}.pid"
+
+	_set_job_state "started" "$PID_DIR/${JOB_NAME[i]}"
+
 	_status "Process started: ${JOB_NAME[i]} ($!)"
 }
 
@@ -630,8 +654,7 @@ for i in "${!JOB_NAME[@]}"; do
 		_start_job "$i"
 	else
 		# Autostart disabled
-		: >"$PID_DIR/${JOB_NAME[i]}.pid"
-		: >"$PID_DIR/${JOB_NAME[i]}.pid.stopped"
+		_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
 	fi
 done
 
@@ -644,7 +667,6 @@ _start_job_trap() {
 		for j in "${!JOB_NAME[@]}"; do
 			if [ "${JOB_NAME[j]}" == "$(basename "${i:0:-10}")" ]; then
 				_start_job "$j"
-				rm "$i"
 				# break 2
 			fi
 		done
@@ -690,7 +712,7 @@ while :; do
 		if [ "${PIDS[i]}" == "$JOB_PID" ]; then
 			if [[ "${JOB_RESTART[i]}" == "error" && $JOB_STATUS -gt 0 || "${JOB_RESTART[i]}" == "on" ]]; then
 				if [[ "${JOB_RESTART[i]}" == "error" && $JOB_STATUS -gt 0 && ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
-					_status "Process failed: ${JOB_NAME[i]} (${PIDS[i]})"
+					_status "Process failed [$JOB_STATUS]: ${JOB_NAME[i]} (${PIDS[i]})"
 				else
 					_status "Process terminated: ${JOB_NAME[i]} (${PIDS[i]})"
 				fi
@@ -699,15 +721,13 @@ while :; do
 				_kill_process_group "$i"
 
 				# Clean up job
-				: >"$PID_DIR/${JOB_NAME[i]}.pid"
 				unset "PIDS[$i]"
 
 				# Restart process
 				if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
 					_start_job "$i"
 				else
-					rm "$PID_DIR/${JOB_NAME[i]}.pid.stop"
-					: >"$PID_DIR/${JOB_NAME[i]}.pid.stopped"
+					_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
 				fi
 			else
 				_status "Process terminated: ${JOB_NAME[i]} (${PIDS[i]})"
@@ -715,10 +735,8 @@ while :; do
 				# Kill possible orphaned zombie processes
 				_kill_process_group "$i"
 
-				: >"$PID_DIR/${JOB_NAME[i]}.pid"
 				unset "PIDS[$i]"
-				rm -f "$PID_DIR/${JOB_NAME[i]}.pid.stop"
-				: >"$PID_DIR/${JOB_NAME[i]}.pid.stopped"
+				_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
 			fi
 		fi
 	done
