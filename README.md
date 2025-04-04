@@ -40,6 +40,8 @@ If no command is provided, supervisor.sh will start in foreground.
 
 ## Configuration file (`supervisor.yaml`)
 
+By default, the configuration is read from `/etc/supervisor.yaml`. You can specify another location with the `--config` option.
+
 ### supervisor
 
 Key                    | Required | Default       | Possible Values | Description
