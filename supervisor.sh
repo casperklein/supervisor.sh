@@ -434,12 +434,14 @@ case "${1:-}" in
 	stop)
 		# Stop app or job?
 		if [ -z "${2:-}" ]; then
+			# Stop daemon or interactive run
 			_stop_app
 		else
+			# Stop job if running
 			_stop_job "$2"
 			exit
 		fi
-		;; # Stop daemon or interactive run
+		;;
 
 	restart)
 		_exit_if_app_is_not_running
