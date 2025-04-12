@@ -12,7 +12,7 @@ shopt -s nullglob        # Return nothing if '*' does not expand
 # Global variables
 APP=${0##*/}
 SCRIPT=$(readlink -f "$0")
-VER=0.3
+VER=0.4
 
 PID_DIR="/run/$APP"
 PID_FILE="$PID_DIR/$APP.pid"
