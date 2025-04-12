@@ -570,8 +570,20 @@ if [ "$1" != "--daemon" ]; then
 fi
 
 _clean_up() {
-	local i grace_period_start=$SECONDS
+	local i grace_period_start=$SECONDS last_wait_info=$SECONDS
 
+	__wait_info() {
+		local wait_jobs seconds_until_sigkill
+		for i in "${!PIDS[@]}"; do
+			wait_jobs+="${JOB_NAME[i]}, "
+		done
+		seconds_until_sigkill=$(( SIGTERM_GRACE_PERIOD + grace_period_start - SECONDS ))
+		(( seconds_until_sigkill > 0 )) && _status "Waiting ${seconds_until_sigkill} seconds for process termination: ${wait_jobs:0:-2}"
+		return 0
+	}
+	__wait_info
+
+	# Wait until all processes are terminated
 	while :; do
 		for i in "${!PIDS[@]}"; do
 			if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stopped" ]; then
@@ -587,11 +599,16 @@ _clean_up() {
 				fi
 			fi
 		done
+
+		# Are all processes terminated?
 		if (( ${#PIDS[@]} == 0 )); then
 			break
 		fi
-		if (( SECONDS - grace_period_start > SIGTERM_GRACE_PERIOD )); then
-			break;
+
+		# Show remaining running processes every 5 seconds
+		if (( SECONDS - last_wait_info > 4 )); then
+			last_wait_info=$SECONDS
+			__wait_info
 		fi
 		sleep 0.2
 	done
