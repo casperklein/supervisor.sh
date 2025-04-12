@@ -17,8 +17,13 @@ The `yq` dependency can be removed. See [below](#run-without-the-yq-dependency).
 Usage:
   supervisor.sh [OPTION] [COMMAND]
 
+Configuration file:
+  By default, the configuration is read from '/etc/supervisor.yaml'.
+  If 'yq' is not available, '/etc/supervisor.yaml.sh' will be used instead.
+  Provide '--config' to specify a custom configuration file.
+
 Options:
-  -c, --config  Specify config file, e.g. 'supervisor.sh -c /path/to/supervisor.yaml'.
+  -c, --config  Specify config file, e.g. 'supervisor.sh -c /path/config.yaml'.
   -h, --help    Show this help.
 
 Commands:
@@ -32,8 +37,8 @@ Commands:
   fix             Fix unclean shutdown.
   log             Show continuously the supervisor.sh log.
   logs            Show continuously the supervisor.sh log + job logs.
-  convert         Convert the YAML config to Bash. This allows the usage without the 'yq' binary,
-                  e.g. inside a Docker container where 'yq' is not available.
+  convert         Convert the YAML config file to Bash. This allows the usage
+                  without the 'yq' dependency.
 
 If no command is provided, supervisor.sh will start in foreground.
 ```

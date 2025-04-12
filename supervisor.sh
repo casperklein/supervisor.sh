@@ -32,8 +32,13 @@ _usage() {
 		Usage:
 		  $APP [OPTION] [COMMAND]
 
+		Configuration file:
+		  By default, the configuration is read from '/etc/supervisor.yaml'.
+		  If 'yq' is not available, '/etc/supervisor.yaml.sh' will be used instead.
+		  Provide '--config' to specify a custom configuration file.
+
 		Options:
-		  -c, --config  Specify config file, e.g. '$APP -c /path/to/supervisor.yaml'.
+		  -c, --config  Specify config file, e.g. '$APP -c /path/config.yaml'.
 		  -h, --help    Show this help.
 
 		Commands:
@@ -47,8 +52,8 @@ _usage() {
 		  fix             Fix unclean shutdown.
 		  log             Show continuously the $APP log.
 		  logs            Show continuously the $APP log + job logs.
-		  convert         Convert the YAML config to Bash. This allows the usage without the 'yq' binary,
-		                  e.g. inside a Docker container where 'yq' is not available.
+		  convert         Convert the YAML config file to Bash. This allows the usage
+		                  without the 'yq' dependency.
 
 		If no command is provided, $APP will start in foreground.
 
