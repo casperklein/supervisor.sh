@@ -5,13 +5,13 @@
 # Dependencies: yq, bash >= 5.1
 # BASH_VERSION 5.1 or higher is required to support 'wait -p'
 
-set -ueo pipefail        # exit on errors
-shopt -s inherit_errexit # exit on errors also in subshells
+set -ueo pipefail        # Exit on errors
+shopt -s inherit_errexit # Exit on errors - also in sub-shells
 shopt -s nullglob        # Return nothing if '*' does not expand
 
 # Global variables
-APP=${0##*/}
-SCRIPT=$(readlink -f "$0")
+APP="supervisor.sh"
+APP_PATH=$(readlink -f "$0")
 VER=0.4
 
 PID_DIR="/run/$APP"
@@ -563,7 +563,7 @@ done
 if [ "$1" != "--daemon" ]; then
 	_exit_if_app_is_already_running
 	_status "Starting $APP"
-	setsid bash "$SCRIPT" --config "$CONFIG_FILE" "--daemon" &
+	setsid bash "$APP_PATH" --config "$CONFIG_FILE" "--daemon" &
 	echo $! >"$PID_FILE"
 	_status "$APP started ($!)"
 	exit 0
