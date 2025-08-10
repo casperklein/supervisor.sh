@@ -66,8 +66,8 @@ fi
 
 # Check if config file exist and is readable
 _check_config_file() {
-	if [ -z "${CONFIG_FILE:-}" ]; then
-		echo "Error: Configuration file '/etc/supervisor.yaml' not found."
+	if [ ! -f "$CONFIG_FILE" ]; then
+		echo "Error: Configuration file '$CONFIG_FILE' not found."
 		echo
 		exit 1
 	fi
@@ -152,14 +152,18 @@ _read_config_file() {
 	return 0
 }
 
-# Use config if present
+# Set default configuration path
 if hash yq 2>/dev/null; then
-	[ -f /etc/supervisor.yaml ]    && CONFIG_FILE=/etc/supervisor.yaml
+	CONFIG_FILE="/etc/supervisor.yaml"
 else
-	[ -f /etc/supervisor.yaml.sh ] && CONFIG_FILE=/etc/supervisor.yaml.sh
+	CONFIG_FILE="/etc/supervisor.yaml.sh"
 fi
+
 # Use config file from argument if given
-[[ ${1:-} =~ ^(-c|--config)$ ]] && CONFIG_FILE=${2:-} && shift 2 || true
+if [[ $# -gt 1 && $1 =~ ^(-c|--config)$ ]]; then
+	CONFIG_FILE=$2
+	shift 2
+fi
 
 _check_config_file
 _read_config_file
