@@ -577,8 +577,10 @@ _clean_up() {
 		for i in "${!PIDS[@]}"; do
 			wait_jobs+="${JOB_NAME[i]}, "
 		done
-		seconds_until_sigkill=$(( SIGTERM_GRACE_PERIOD + grace_period_start - SECONDS ))
-		(( seconds_until_sigkill > 0 )) && _status "Waiting ${seconds_until_sigkill} seconds for process termination: ${wait_jobs:0:-2}"
+		if [ -n "${wait_jobs:-}" ]; then
+			seconds_until_sigkill=$(( SIGTERM_GRACE_PERIOD + grace_period_start - SECONDS ))
+			(( seconds_until_sigkill > 0 )) && _status "Waiting ${seconds_until_sigkill} seconds for process termination: ${wait_jobs:0:-2}"
+		fi
 		return 0
 	}
 	__wait_info
