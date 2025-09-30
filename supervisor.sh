@@ -718,9 +718,23 @@ trap _start_job_trap SIGUSR1
 # Kill a process group
 _kill_process_group() {
 	local i=$1
-	# Kill possible orphaned zombie processes
-	if kill -SIGKILL -"${PIDS[i]}" 2>/dev/null; then
-		_status "Orphaned zombie process detected. Sending SIGKILL to processes group ${PIDS[i]}"
+	local grace_period_start=$SECONDS
+
+	if kill -0 -"${PIDS[i]}" 2>/dev/null; then
+		kill -SIGTERM -"${PIDS[i]}" 2>/dev/null
+		_status "Waiting for ${JOB_NAME[i]} child processes to terminate."
+
+		while kill -0 -"${PIDS[i]}" 2>/dev/null; do
+			if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
+				# Kill possible orphaned zombie processes
+				if kill -SIGKILL -"${PIDS[i]}" 2>/dev/null; then
+					_status "${JOB_NAME[i]} child processes are still running, sending SIGKILL (${PIDS[i]})"
+				fi
+			fi
+			sleep 0.2
+		done
+
+		_status "${JOB_NAME[i]} child processes terminated."
 	fi
 }
 
@@ -756,7 +770,7 @@ while :; do
 				fi
 
 				# Kill possible orphaned zombie processes
-				_kill_process_group "$i"
+				sleep 0.2; _kill_process_group "$i"
 
 				# Clean up job
 				unset "PIDS[$i]"
@@ -771,7 +785,7 @@ while :; do
 				_status "Process terminated: ${JOB_NAME[i]} (${PIDS[i]})"
 
 				# Kill possible orphaned zombie processes
-				_kill_process_group "$i"
+				sleep 0.2; _kill_process_group "$i"
 
 				unset "PIDS[$i]"
 				_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
