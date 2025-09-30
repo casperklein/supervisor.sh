@@ -23,8 +23,8 @@ Configuration file:
   Provide '--config' to specify a custom configuration file.
 
 Options:
-  -c, --config  Specify config file, e.g. 'supervisor.sh -c /path/config.yaml'.
-  -h, --help    Show this help.
+  -c, --config    Specify config file, e.g. 'supervisor.sh -c /path/config.yaml'.
+  -h, --help      Show this help.
 
 Commands:
   start           Start supervisor.sh as daemon.

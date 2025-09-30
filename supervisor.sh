@@ -12,7 +12,7 @@ shopt -s nullglob        # Return nothing if '*' does not expand
 # Global variables
 APP="supervisor.sh"
 APP_PATH=$(readlink -f "$0")
-VER=0.5
+VER=0.6
 
 PID_DIR="/run/$APP"
 PID_FILE="$PID_DIR/$APP.pid"
@@ -38,8 +38,8 @@ _usage() {
 		  Provide '--config' to specify a custom configuration file.
 
 		Options:
-		  -c, --config  Specify config file, e.g. '$APP -c /path/config.yaml'.
-		  -h, --help    Show this help.
+		  -c, --config    Specify config file, e.g. '$APP -c /path/config.yaml'.
+		  -h, --help      Show this help.
 
 		Commands:
 		  start           Start $APP as daemon.
