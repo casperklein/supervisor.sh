@@ -690,7 +690,7 @@ _start_job() {
 
 	_set_job_state "started" "$PID_DIR/${JOB_NAME[i]}"
 
-	_status "Process started: ${JOB_NAME[i]} ($!)"
+	_status "Process started: ${JOB_NAME[i]} (${PIDS[i]})"
 }
 
 # Start jobs
