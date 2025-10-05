@@ -410,6 +410,10 @@ _stop_job() {
 				fi
 				sleep 0.2
 			done
+
+			# Wait until cleanup is done
+			until [ -f "$PID_DIR/$name.pid.stopped" ]; do sleep 0.2; done
+
 			_status "$name stopped ($job_pid)"
 			return 0
 		else
