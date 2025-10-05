@@ -788,6 +788,7 @@ while :; do
 
 				# Restart process
 				if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
+					_status "Restarting: ${JOB_NAME[i]}"
 					_start_job "$i"
 				else
 					_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
