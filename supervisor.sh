@@ -781,12 +781,12 @@ while :; do
 				fi
 
 				# Kill possible orphaned zombie processes
-				sleep 0.2; _kill_process_group "$i"
+				_kill_process_group "$i"
 
 				# Clean up job
 				unset "PIDS[$i]"
 
-				# Restart process
+				# Restart job, if job was not stopped on purpose (via the 'stop' command)
 				if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
 					_status "Restarting: ${JOB_NAME[i]}"
 					_start_job "$i"
@@ -797,8 +797,9 @@ while :; do
 				_status "Process terminated: ${JOB_NAME[i]} (${PIDS[i]})"
 
 				# Kill possible orphaned zombie processes
-				sleep 0.2; _kill_process_group "$i"
+				_kill_process_group "$i"
 
+				# Clean up job
 				unset "PIDS[$i]"
 
 				# Stop the app if a required job has stopped
