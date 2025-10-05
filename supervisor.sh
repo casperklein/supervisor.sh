@@ -392,7 +392,7 @@ _start_job_cli() {
 	fi
 }
 
-_stop_job() {
+_stop_job_cli() {
 	local name=$1 job_pid
 	local grace_period_start=$SECONDS
 
@@ -456,7 +456,7 @@ case "${1:-}" in
 			_stop_app
 		else
 			# Stop job if running
-			_stop_job "$2"
+			_stop_job_cli "$2"
 			exit
 		fi
 		;;
@@ -475,7 +475,7 @@ case "${1:-}" in
 
 			_stop_app no-exit # Continue from here after the app was stopped to start again
 		else
-			if _stop_job "$2"; then
+			if _stop_job_cli "$2"; then
 				_start_job_cli "$2"
 				exit
 			else
