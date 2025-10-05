@@ -408,7 +408,7 @@ _stop_job() {
 			while kill -0 -"$job_pid" 2>/dev/null; do
 				if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
 					_status "Process still running, sending SIGKILL: $name ($job_pid)"
-					kill -9 -"$job_pid" 2>/dev/null || true
+					kill -SIGKILL -"$job_pid" 2>/dev/null || true
 				fi
 				sleep 0.2
 			done
