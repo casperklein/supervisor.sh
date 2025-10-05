@@ -359,13 +359,20 @@ _start_job_cli() {
 
 	if [ -f "$PID_DIR/$name.pid" ]; then
 		job_pid=$(<"$PID_DIR/$name.pid")
-		if ! kill -0 "$job_pid" 2>/dev/null; then
-			# Change job state
-			rm -f "$PID_DIR/$name.pid.stopped"
+		if [ -f "$PID_DIR/$name.pid.stopped" ]; then
+			# Request job start once
+			if [ -f "$PID_DIR/$name.pid.start" ]; then
+				echo -e "Error: Job start already in progress\n" >&2
+				return 1
+			fi
+
+			# Request job start
 			: >"$PID_DIR/$name.pid.start"
 
 			_status "Starting $name"
+
 			# Send USR1 signal to server to trigger the job start
+			# start_job_trap() will then start the job
 			kill -SIGUSR1 "$(<"$PID_FILE")"
 
 			# Wait until job has started
@@ -373,15 +380,10 @@ _start_job_cli() {
 				sleep 0.2
 			done
 
-			if [ ! -f "$PID_DIR/$name.pid.stopped" ]; then
-				_status "$name started ($(<"$PID_DIR/$name.pid"))"
-				return 0
-			else
-				_status "$name failed to start"
-				return 1
-			fi
+			_status "$name started ($(<"$PID_DIR/$name.pid"))"
+			return 0
 		else
-			echo -e "Error: $name is already running\n" >&2
+			echo -e "Error: '$name' is already running\n" >&2
 			return 1
 		fi
 	else
