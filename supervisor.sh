@@ -768,6 +768,11 @@ while :; do
 
 	for i in "${!PIDS[@]}"; do
 		if [ "${PIDS[i]}" == "$JOB_PID" ]; then
+
+			if [ -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
+				_status "Process termination is expected: ${JOB_NAME[i]} (${PIDS[i]})"
+			fi
+
 			if [[ "${JOB_RESTART[i]}" == "error" && $JOB_STATUS -gt 0 || "${JOB_RESTART[i]}" == "on" ]]; then
 				if [[ "${JOB_RESTART[i]}" == "error" && $JOB_STATUS -gt 0 && ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
 					_status "Process failed [$JOB_STATUS]: ${JOB_NAME[i]} (${PIDS[i]})"
