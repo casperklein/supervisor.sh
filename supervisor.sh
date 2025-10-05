@@ -399,7 +399,7 @@ _stop_job() {
 	if [ -f "$PID_DIR/$name.pid" ]; then
 		job_pid=$(<"$PID_DIR/$name.pid")
 		if kill -0 -"$job_pid" 2>/dev/null; then
-			# Change job state
+			# Let supervisor know, that the job is stopped on purpose
 			: >"$PID_DIR/$name.pid.stop"
 
 			# Send SIGTERM to job process group
