@@ -120,11 +120,12 @@ _read_config_file() {
 	COLOR=$(               yq -r '.supervisor.color // ""'                 "$CONFIG_FILE")
 
 	# Job config
-	mapfile -t JOB_NAME      < <(yq -r '.jobs[].name    // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
-	mapfile -t JOB_COMMAND   < <(yq -r '.jobs[].command // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
-	mapfile -t JOB_RESTART   < <(yq -r '.jobs[].restart // "error"'       "$CONFIG_FILE") # Default value is       'error', instead of 'null'
-	mapfile -t JOB_LOGFILE   < <(yq -r '.jobs[].logfile // "/dev/stdout"' "$CONFIG_FILE") # Default value is '/dev/stdout', instead of 'null'
-	mapfile -t JOB_AUTOSTART < <(yq -r '.jobs[].autostart // "on"'        "$CONFIG_FILE") # Default value is          'on', instead of 'null'
+	mapfile -t JOB_NAME      < <(yq -r '.jobs[].name      // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
+	mapfile -t JOB_COMMAND   < <(yq -r '.jobs[].command   // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
+	mapfile -t JOB_RESTART   < <(yq -r '.jobs[].restart   // "error"'       "$CONFIG_FILE") # Default value is         'error', instead of 'null'
+	mapfile -t JOB_REQUIRED  < <(yq -r '.jobs[].required  // "no"'          "$CONFIG_FILE") # Default value is            'no', instead of 'null'
+	mapfile -t JOB_LOGFILE   < <(yq -r '.jobs[].logfile   // "/dev/stdout"' "$CONFIG_FILE") # Default value is   '/dev/stdout', instead of 'null'
+	mapfile -t JOB_AUTOSTART < <(yq -r '.jobs[].autostart // "on"'          "$CONFIG_FILE") # Default value is            'on', instead of 'null'
 
 	# Some simple tests, to see if the parsing of the YAML file was successful
 	__show_error_and_exit() {
@@ -146,6 +147,7 @@ _read_config_file() {
 
 	local count=${#JOB_NAME[@]}
 	(( count !=  ${#JOB_RESTART[@]} ))   && __show_error_and_exit "ARRAY" "JOB_RESTART"
+	(( count !=  ${#JOB_REQUIRED[@]} ))  && __show_error_and_exit "ARRAY" "JOB_REQUIRED"
 	(( count !=  ${#JOB_LOGFILE[@]} ))   && __show_error_and_exit "ARRAY" "JOB_LOGFILE"
 	(( count !=  ${#JOB_AUTOSTART[@]} )) && __show_error_and_exit "ARRAY" "JOB_AUTOSTART"
 
@@ -792,6 +794,16 @@ while :; do
 				sleep 0.2; _kill_process_group "$i"
 
 				unset "PIDS[$i]"
+
+				# Stop the app if a required job has stopped
+				if [ "${JOB_REQUIRED[i]}" == "yes" ]; then
+					# Keep running, if the job was stopped on purpose (via the 'stop' command)
+					if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
+						_status "Required job '${JOB_NAME[i]}' stopped. Shutting down.."
+						_stop_app
+					fi
+				fi
+
 				_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
 			fi
 		fi

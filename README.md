@@ -64,6 +64,7 @@ Key         | Required | Default       | Possible Values      | Description
 `command`   | Yes      |               | Any string           | Job command
 `autostart` | No       | `on`          | `on`, `off`          | Start job automatically (`on`) or not (`off`)
 `restart`   | No       | `error`       | `error`, `on`, `off` | Restart a job if it exits, only on failure (`error`) or always (`on`) or never (`off`)
+`required`  | No       | `no`          | `no`, `yes`          | When a required job stops, all remaining jobs and the supervisor are stopped as well.
 `logfile`   | No       | `/dev/stdout` | Valid file path      | Log file for output
 
 ## Example
