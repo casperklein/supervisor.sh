@@ -95,6 +95,11 @@ jobs:
     command: "echo 'I was started manually'"
     autostart: "off"
     logfile: "/var/log/job4.log"
+
+  - name: "job5"
+    command: "echo 'I am required. If I stop, supervisor will stop too.'"
+    restart: "off"
+    required: "yes"
 ```
 
 ## Run without the 'yq' dependency

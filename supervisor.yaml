@@ -2,6 +2,7 @@ supervisor:
   logfile: "/var/log/supervisor.log"
   sigterm_grace_period: 2
   keep_running: "off"
+  color: "\e[0;34m" # blue text color
 
 jobs:
   - name: "job1"
@@ -22,3 +23,8 @@ jobs:
     command: "echo 'I was started manually'"
     autostart: "off"
     logfile: "/var/log/job4.log"
+
+  - name: "job5"
+    command: "echo 'I am required. If I stop, supervisor will stop too.'"
+    restart: "off"
+    required: "yes"
