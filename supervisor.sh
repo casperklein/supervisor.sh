@@ -512,8 +512,7 @@ case "${1:-}" in
 	log)
 		if [[ "$LOG_FILE" != "/dev/stdout" && -f "$LOG_FILE" ]]; then
 			# Show the last 10 log lines, then output appended data as the file grows
-			tail -n 10 -F "$LOG_FILE"
-			exit
+			exec tail -n 10 -F "$LOG_FILE"
 		else
 			echo "Error: No log file configured in '$CONFIG_FILE'" >&2
 			echo >&2
@@ -536,8 +535,7 @@ case "${1:-}" in
 
 		if (( ${#LOGS[@]} > 0 )); then
 			# Show the last 10 log lines, then output appended data as the files grow
-			tail -n 10 -F "${LOGS[@]}"
-			exit
+			exec tail -n 10 -F "${LOGS[@]}"
 		else
 			echo "Error: No log files configured in '$CONFIG_FILE'" >&2
 			echo >&2
