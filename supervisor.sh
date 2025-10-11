@@ -423,18 +423,25 @@ _stop_job_cli() {
 				sleep 0.2
 			done
 
-			# Wait until cleanup is done
-			until [ -f "$PID_DIR/$name.pid.stopped" ]; do sleep 0.2; done
+			if ! _is_app_running; then
+				_status "$name most likely stopped ($job_pid)"
+				_exit_if_app_is_not_running
+			fi
+
+			# Wait until the job is stopped.
+			# This is confirmed either by the presence of the .stopped file (supervisor is still running and the job is stopped), or
+			# when the .pid file has been removed (supervisor has stopped, e.g. when no more jobs are running).
+			until [[ -f "$PID_DIR/$name.pid.stopped" || ! -f "$PID_DIR/$name.pid" ]]; do sleep 0.2; done
 
 			_status "$name stopped ($job_pid)"
 			return 0
 		else
 			echo -e "Error: $name is not running\n" >&2
-			return 1
+			exit 1
 		fi
 	else
 		echo -e "Error: Job '$name' not found\n" >&2
-		return 1
+		exit 1
 	fi
 }
 
