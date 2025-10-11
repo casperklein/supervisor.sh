@@ -350,8 +350,6 @@ _show_process_status() {
 		printf -- '%-s\n'                   "${pid[i]}"
 	done
 	echo
-
-	_exit_if_app_is_not_running
 }
 
 _start_job_cli() {
