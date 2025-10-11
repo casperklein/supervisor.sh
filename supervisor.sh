@@ -263,7 +263,7 @@ _fix_unclean_shutdown() {
 		done
 		if (( check_success == 1 )); then
 			check_success=0
-			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD}s before sending SIGKILL to still running jobs."
+			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD}s before sending SIGKILL to possibly still running jobs."
 			sleep "$SIGTERM_GRACE_PERIOD"
 		else
 			break
@@ -271,6 +271,7 @@ _fix_unclean_shutdown() {
 	done
 	sleep 1
 	_delete_runtime_files
+	_status "Fix was successful."
 	echo
 }
 
