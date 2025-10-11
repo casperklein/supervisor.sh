@@ -500,6 +500,7 @@ case "${1:-}" in
 			JOB_NAME                         \
 			JOB_COMMAND                      \
 			JOB_RESTART                      \
+			JOB_REQUIRED                     \
 			JOB_LOGFILE                      \
 			JOB_AUTOSTART                    \
 			| sed 's/^declare /declare -g /' \
