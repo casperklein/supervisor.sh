@@ -17,10 +17,11 @@ VER=0.7
 PID_DIR="/run/$APP"
 PID_FILE="$PID_DIR/$APP.pid"
 
-FOREGROUND=0
-CONFIG_FILE_BASH=0
-PIDS=()
 COLOR=""
+CONFIG_FILE_BASH=0
+FOREGROUND=0
+PIDS=()
+STOP_ANNOUNCED=0
 
 # Begin shared part (client & server)
 
@@ -274,32 +275,41 @@ _fix_unclean_shutdown() {
 }
 
 _stop_app() {
+	local app_pid
+	app_pid=$(<"$PID_FILE")
+
 	if [ -f "$PID_DIR/.sigterm" ]; then
-		# Prevent SIGTERM trap loop
+		# Termination already in progress, prevent loop.
+		if (( STOP_ANNOUNCED == 0 )); then
+			# Stop triggered by "supervisor.sh stop"
+			_status "Stopping $APP ($app_pid)"
+		fi
+		# Trigger _clean_up()
 		exit
 	fi
 
 	_exit_if_app_is_not_running
 
-	local app_pid
-	app_pid=$(<"$PID_FILE")
 	_status "Stopping $APP ($app_pid)"
+	STOP_ANNOUNCED=1
 
 	# Send SIGTERM to all process groups (supervisor + jobs)
 	local i job_pids
 	for i in "$PID_DIR"/*.pid; do
 		if [ ! -f "$i.stopped" ]; then
 			job_pids+=(-"$(<"$i")")
-			# Change job state
+			# Announce that job termination is in progress
 			: >"$i.stop"
 		fi
 	done
-	: >"$PID_DIR/.sigterm" # Prevent SIGTERM trap loop
+
+	# Prevent loop
+	: >"$PID_DIR/.sigterm"
 
 	# Run in own process group to avoid a race condition, e.g.:
-	# kill -SIGTERM job1 job2 job3 supervisor
 	# If job1 runs 'supervisor.sh stop', job1 may be killed before sending SIGTERM to all PIDs, especially to the last one (supervisor)
-	setsid bash -c "kill -SIGTERM  ${job_pids[*]} 2>/dev/null" &
+	# --> kill -SIGTERM job1 job2 job3 supervisor
+	setsid bash -c "kill -SIGTERM ${job_pids[*]} 2>/dev/null"
 
 	# Wait until stopped
 	while kill -0 "$app_pid" 2>/dev/null; do
@@ -307,7 +317,7 @@ _stop_app() {
 	done
 	_status "$APP stopped ($app_pid)"
 
-	[ -n "${1:-}" ] && return 0 # Return and start supervisor again if $1 is not empty
+	[ -n "${1:-}" ] && return 0 # Return and start supervisor again, if $1 is not empty (supervisor.sh restart)
 	exit 0
 }
 
