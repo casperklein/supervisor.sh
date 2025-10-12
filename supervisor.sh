@@ -225,8 +225,8 @@ _exit_if_unclean_shutdown() {
 		echo "Run '$APP fix' to stop any running jobs and clean up."
 		echo
 		_show_process_status
-		exit # _show_process_status should already exit, because $app is not running
-	fi
+		exit 1
+	fi >&2
 }
 
 _delete_runtime_files() {
