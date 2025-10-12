@@ -222,10 +222,11 @@ _check_clean_shutdown() {
 
 _exit_if_unclean_shutdown() {
 	if ! _check_clean_shutdown; then
-		echo "Error: $APP was not stopped gracefully. See the process status below."
-		echo "Run '$APP fix' to stop any running jobs and clean up."
+		echo "Error: $APP was not stopped gracefully. See the process status table below."
 		echo
 		_show_process_status
+		echo "Run '$APP fix' to stop any running jobs and clean up."
+		echo
 		exit 1
 	fi >&2
 }
