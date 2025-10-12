@@ -491,12 +491,9 @@ case "${1:-}" in
 
 			_stop_app no-exit # Continue from here after the app was stopped to start again
 		else
-			if _stop_job_cli "$2"; then
-				_start_job_cli "$2"
-				exit
-			else
-				exit 1
-			fi
+			_stop_job_cli "$2"
+			_start_job_cli "$2"
+			exit
 		fi
 		;;
 
