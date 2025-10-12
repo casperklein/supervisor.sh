@@ -164,7 +164,8 @@ fi
 
 # Use config file from argument if given
 if [[ $# -gt 1 && $1 =~ ^(-c|--config)$ ]]; then
-	CONFIG_FILE=$2
+	# Absolute CONFIG_FILE path is necessary for daemon mode (Daemon's work directory is /)
+	CONFIG_FILE=$(readlink -f "$2")
 	shift 2
 fi
 
