@@ -230,8 +230,7 @@ _exit_if_unclean_shutdown() {
 }
 
 _delete_runtime_files() {
-	rm -f "$PID_FILE"
-	rm -f "$PID_DIR/"*
+	rm -f "$PID_DIR/"*.pid*
 	rm -f "$PID_DIR/.sigterm"
 }
 
