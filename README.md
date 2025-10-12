@@ -97,7 +97,7 @@ jobs:
     logfile: "/var/log/job4.log"
 
   - name: "job5"
-    command: "echo 'I am required. If I stop, supervisor will stop too.'"
+    command: "echo 'I am required. If I stop, supervisor will stop too.'; sleep 20"
     restart: "off"
     required: "yes"
 ```
