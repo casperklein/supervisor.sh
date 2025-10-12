@@ -209,6 +209,7 @@ _exit_if_app_is_already_running() {
 	fi >&2
 }
 
+# Check if supervisor was gracefully stopped (Is PID_DIR clean?)
 _check_clean_shutdown() {
 	local i
 	if ! _is_app_running; then
@@ -457,15 +458,15 @@ case "${1:-}" in
 			# Start daemon if not running
 			_exit_if_unclean_shutdown
 		else
-			# Start job if not running
 			_exit_if_app_is_not_running
+			# Start job if not running
 			_start_job_cli "$2"
 			exit
 		fi
 		;;
 
 	stop)
-		# Stop app or job?
+		# Stop supervisor or job?
 		if [ -z "${2:-}" ]; then
 			# Stop daemon or interactive run
 			_stop_app
@@ -479,7 +480,7 @@ case "${1:-}" in
 	restart)
 		_exit_if_app_is_not_running
 
-		# Restart app or job?
+		# Restart supervisor or job?
 		if [ -z "${2:-}" ]; then
 			LAST_ARG=$(tr '\0' '\n' < "/proc/$(<"$PID_FILE")/cmdline" | tail -1)
 			if [ "$LAST_ARG" != "--daemon" ]; then
@@ -488,7 +489,7 @@ case "${1:-}" in
 				exit 1
 			fi >&2
 
-			_stop_app no-exit # Continue from here after the app was stopped to start again
+			_stop_app no-exit # Continue from here after the supervisor was stopped to start again
 		else
 			_stop_job_cli "$2"
 			_start_job_cli "$2"
@@ -786,6 +787,7 @@ while :; do
 				_status "Process termination is expected: ${JOB_NAME[i]} (${PIDS[i]})"
 			fi
 
+			# Restart job if necessary
 			if [[ "${JOB_RESTART[i]}" == "error" && $JOB_STATUS -gt 0 || "${JOB_RESTART[i]}" == "on" ]]; then
 				if [[ "${JOB_RESTART[i]}" == "error" && $JOB_STATUS -gt 0 && ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
 					_status "Process failed [$JOB_STATUS]: ${JOB_NAME[i]} (${PIDS[i]})"
@@ -815,7 +817,7 @@ while :; do
 				# Clean up job
 				unset "PIDS[$i]"
 
-				# Stop the app if a required job has stopped
+				# Stop the supervisor if a required job has stopped
 				if [ "${JOB_REQUIRED[i]}" == "yes" ]; then
 					# Keep running, if the job was stopped on purpose (via the 'stop' command)
 					if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
