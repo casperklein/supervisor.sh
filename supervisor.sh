@@ -33,7 +33,7 @@ fi
 
 # Begin shared part (client & server)
 
-# Show usage
+# Show usage and exit
 _usage() {
 	cat <<-USAGE
 		$APP $VER
@@ -47,31 +47,30 @@ _usage() {
 		  Provide '--config' to specify a custom configuration file.
 
 		Options:
-		  -c, --config    Specify config file, e.g. '$APP -c /path/config.yaml'.
-		  -h, --help      Show this help.
+		  -c, --config     Specify config file, e.g. '$APP -c /path/config.yaml'.
+		  -h, --help       Show this help.
+		  -n, --no-color   Disable color usage.
+		  -v, --version    Show version.
 
 		Commands:
-		  start           Start $APP as daemon.
-		  start <job>     Start job.
-		  stop            Stop $APP.
-		  stop  <job>     Stop job.
-		  restart         Restart daemon.
-		  restart <job>   Restart job.
-		  status          Show process status.
-		  fix             Fix unclean shutdown.
-		  log             Show continuously the $APP log.
-		  logs            Show continuously the $APP log + job logs.
-		  convert         Convert the YAML config file to Bash. This allows the usage
-		                  without the 'yq' dependency.
+		  start            Start $APP as daemon.
+		  start <job>      Start job.
+		  stop             Stop $APP.
+		  stop  <job>      Stop job.
+		  restart          Restart daemon.
+		  restart <job>    Restart job.
+		  status           Show process status.
+		  fix              Fix unclean shutdown.
+		  log              Show continuously the $APP log.
+		  logs             Show continuously the $APP log + job logs.
+		  convert          Convert the YAML config file to Bash. This allows the usage
+		                   without the 'yq' dependency.
 
 		If no command is provided, $APP will start in foreground.
 
 	USAGE
 	exit 0
 }
-if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
- 	_usage
-fi
 
 # Check if config file exist and is readable
 _check_config_file() {
@@ -680,16 +679,16 @@ case "${1:-}" in
 
 	--daemon) : ;; # Already in daemon mode --> Don't start again
 
-	# No argument? Run in foreground
+	# No command? Start supervisor in foreground.
 	"")
 		_exit_if_unclean_shutdown
 		_exit_if_app_is_already_running
-		set -- "--daemon" # Pretend to be already in daemon mode --> Don't start again
+		set -- "--daemon" # Pretend to be already in daemon mode --> Don't start as daemon
 		FOREGROUND=1      # Run interactively, not as daemon
 		;;
 
 	*)
-		echo "Error: Unknown argument '$1'" >&2
+		echo "Error: Unknown command '$1'" >&2
 		echo >&2
 		exit 1
 		;;
