@@ -24,6 +24,13 @@ FOREGROUND=0
 PIDS=()
 STOP_ANNOUNCED=0
 
+# Set default configuration path
+if hash yq 2>/dev/null; then
+	CONFIG_FILE="/etc/supervisor.yaml"
+else
+	CONFIG_FILE="/etc/supervisor.yaml.sh"
+fi
+
 # Begin shared part (client & server)
 
 # Show usage
@@ -82,6 +89,8 @@ _check_config_file() {
 
 # Parse config file and create global variables
 _read_config_file() {
+	_check_config_file
+
 	# Is the config file a Bash script (converted from yaml)?
 	if [ "$(head -c 7 "$CONFIG_FILE")" == "declare" ]; then
 		CONFIG_FILE_BASH=1
@@ -95,7 +104,7 @@ _read_config_file() {
 		echo "Error: 'yq' binary is not available. Get it from: https://github.com/mikefarah/yq"
 		echo
 		exit 1
-        fi >&2
+	fi >&2
 
 	__yq_info() {
 		echo "There are at least two, that have the same name."
@@ -115,7 +124,7 @@ _read_config_file() {
 	# mapfile -t --> Remove a trailing DELIM from each line read (default newline)
 	# yq -r      --> unwrap scalar, print the value with no quotes, colors or comments
 
-	# Global config
+	# supervisor config
 	LOG_FILE=$(            yq -r '.supervisor.logfile // "/dev/stdout"'    "$CONFIG_FILE")
 	SIGTERM_GRACE_PERIOD=$(yq -r '.supervisor.sigterm_grace_period // "2"' "$CONFIG_FILE")
 	KEEP_RUNNING=$(        yq -r '.supervisor.keep_running // "off"'       "$CONFIG_FILE")
@@ -155,26 +164,6 @@ _read_config_file() {
 
 	return 0
 }
-
-# Set default configuration path
-if hash yq 2>/dev/null; then
-	CONFIG_FILE="/etc/supervisor.yaml"
-else
-	CONFIG_FILE="/etc/supervisor.yaml.sh"
-fi
-
-# Use config file from argument if given
-if [[ $# -gt 1 && $1 =~ ^(-c|--config)$ ]]; then
-	# Absolute CONFIG_FILE path is necessary for daemon mode (Daemon's work directory is /)
-	CONFIG_FILE=$(readlink -f "$2")
-	shift 2
-fi
-
-_check_config_file
-_read_config_file
-
-cd /
-mkdir -p "$PID_DIR"
 
 _status() {
 	[ -n "$COLOR" ] && (( FOREGROUND == 1 )) && printf -- '%s' "$COLOR" # set color
@@ -531,6 +520,53 @@ _stop_job_cli() {
 		exit 1
 	fi
 }
+
+# Parse options
+while [[ "${1:-}" == -* ]]; do
+	case "${1:-}" in
+		-h|--help)
+			_usage
+			;;
+
+		-c|--config)
+			# Use config file from argument
+			if [ -z "${2:-}" ]; then
+				echo "Error: No configuration file provided."
+				echo
+				exit 1
+			fi >&2
+			# Get absolute CONFIG_FILE path. A relative path will not work in daemon mode (Daemon's work directory is /)
+			CONFIG_FILE=$(readlink -f "$2")
+			shift 2
+			;;
+
+		-n|--no-color)
+			NO_COLOR=1
+			shift
+			;;
+
+		-v|--version)
+			echo "$APP $VER"
+			echo
+			exit
+			;;
+
+		--daemon)
+			break
+			;;
+
+		*)
+			echo "Error: Unknown option '$1'" >&2
+			echo >&2
+			exit 1
+	esac
+done
+
+_read_config_file
+(( NO_COLOR == 1 )) && COLOR=""
+
+cd /
+mkdir -p "$PID_DIR"
 
 # Get command
 case "${1:-}" in
