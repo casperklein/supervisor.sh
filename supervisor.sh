@@ -18,6 +18,7 @@ PID_DIR="/run/$APP"
 PID_FILE="$PID_DIR/$APP.pid"
 
 COLOR=""
+NO_COLOR=0
 CONFIG_FILE_BASH=0
 FOREGROUND=0
 PIDS=()
@@ -225,7 +226,7 @@ _exit_if_unclean_shutdown() {
 	if ! _check_clean_shutdown; then
 		echo "Error: $APP was not stopped gracefully. See the process status table below."
 		echo
-		_show_process_status
+		_show_process_states
 		echo "Run '$APP fix' to stop any running jobs and clean up."
 		echo
 		exit 1
@@ -324,23 +325,28 @@ _stop_app() {
 	exit 0
 }
 
-_show_process_status() {
-	local i name=("NAME") status=("STATUS") pid=("PID")
+_show_process_states() {
+	local i name=("Name") state=("State") pid=("PID")
 
-	# Get status of processes
+	# Get process states
 	for i in "$PID_DIR"/*.pid; do
 		name+=("$(basename "${i:0:-4}")")
 		if kill -0 "$(<"$i")" 2>/dev/null; then
-			status+=(running)
+			state+=(running)
 			pid+=("$(<"$i")")
 		else
-			status+=(stopped)
+			state+=(stopped)
 			pid+=("")
 		fi
 	done
 
-	# Get longest value from given arguments + 2
-	__get_max_value_length_plus_2() {
+	if (( ${#name[@]} == 1 )); then
+		echo "No processes are running."
+		echo
+		return 0
+	fi
+
+	__get_max_element_length_from_array() {
 		local max_len=0
 		local i
 		for i in "$@"; do
@@ -348,20 +354,98 @@ _show_process_status() {
 				max_len=${#i}
 			fi
 		done
-		echo "$(( max_len + 2 ))"
+		echo "$max_len"
 	}
 
-	# Calculate padding
-	local padding_name padding_status
-	padding_name=$(__get_max_value_length_plus_2 "${name[@]}")
-	padding_status=$(__get_max_value_length_plus_2 "${status[@]}")
+	# Set column padding
+	local padding_name padding_state padding_pid
+	padding_name=$( __get_max_element_length_from_array "${name[@]}")
+	padding_state=$(__get_max_element_length_from_array "${state[@]}")
+	padding_pid=$(  __get_max_element_length_from_array "${pid[@]}")
+
+	__print_table_line() {
+		# $1	Filler
+		# $2	left edge
+		# $3	Separator
+		# $4	Right edge
+
+		# 1st column
+		printf -- "%s"      "$2"
+		printf -- "%0.s$1"  $(seq 1 $(( padding_name  + 2 )))
+
+		# 2nd column
+		printf -- "%s"      "$3"
+		printf -- "%0.s$1"  $(seq 1 $(( padding_state + 2 )))
+
+		# 3rd column
+		printf -- "%s"      "$3"
+		printf -- "%0.s$1"  $(seq 1 $(( padding_pid   + 2 )))
+		printf -- "%s\n"    "$4"
+	}
+
+	__print_spaces() {
+		printf -- "%${1}s"
+	}
+
+	# Top border
+	__print_table_line "─" "┌" "┬" "┐"
 
 	# Print table
+	local green=$'\e[0;32m'
+	local red=$'\e[1;31m'
+	local white=$'\e[1;37m'
+	local reset=$'\e[0m'
+
 	for i in "${!name[@]}"; do
-		printf -- '%-*s'  "$padding_name"   "${name[i]}"
-		printf -- '%-*s'  "$padding_status" "${status[i]}"
-		printf -- '%-s\n'                   "${pid[i]}"
+		if (( NO_COLOR == 0 )); then
+			# The '%-*s' printf (dynamic) padding does not handle "colored" strings properly
+			# Manual padding is required instead
+
+			# 1st column (Name)
+			printf -- '│ '
+			if (( i == 0 )); then
+				# Print header row in bright white
+				printf -- "%s" "$white${name[i]}$reset"
+			else
+				printf -- "%s"       "${name[i]}"
+			fi
+			__print_spaces $(( padding_name - ${#name[i]} + 1 ))
+
+			# 2nd column (State)
+			printf -- '│ '
+			case "${state[i]}" in
+				  State) printf -- "%s" "$white${state[i]}$reset" ;; # Print header row in bright white
+				running) printf -- "%s" "$green${state[i]}$reset" ;; # Print "running" jobs in green
+				stopped) printf -- "%s"   "$red${state[i]}$reset" ;; # Print "stopped" jobs in red
+			esac
+			__print_spaces $(( padding_state - ${#state[i]} + 1 ))
+
+			# 3rd column (PID)
+			printf -- '│ '
+			case "${pid[i]}" in
+				PID) printf -- "%s" "$white${pid[i]}$reset" ;;
+				  *) printf -- "%s"       "${pid[i]}"       ;;
+			esac
+			__print_spaces $(( padding_pid - ${#pid[i]} + 1 ))
+			echo "│"
+		else
+			# Colorless table
+			# 1st column (Name)
+			printf -- '│ %-*s '    "$padding_name"  "${name[i]}"
+			# 2nd column (State)
+			printf -- '│ %-*s '    "$padding_state" "${state[i]}"
+			# 3rd column (PID)
+			printf -- '│ %-*s │\n' "$padding_pid"   "${pid[i]}"
+		fi
+
+		# Separate header row from table body
+		if (( i == 0 )); then
+			__print_table_line "═" "╞" "╪" "╡"
+		fi
 	done
+
+	# Bottom border
+	__print_table_line "─" "└" "┴" "┘"
 	echo
 }
 
@@ -452,7 +536,7 @@ _stop_job_cli() {
 case "${1:-}" in
 	fix)    _fix_unclean_shutdown; exit ;;
 
-	status) _show_process_status; exit ;;
+	status) _show_process_states; exit ;;
 
 	start)
 		# Start daemon or job?
