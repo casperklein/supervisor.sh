@@ -1,14 +1,17 @@
 _supervisor_sh() {
-	local cur prev args
+	local cur=${COMP_WORDS[COMP_CWORD]}
+	local prev=${COMP_WORDS[COMP_CWORD-1]}
+	local prev2=${COMP_WORDS[COMP_CWORD-2]}
 
-	cur=${COMP_WORDS[COMP_CWORD]}
-	prev=${COMP_WORDS[COMP_CWORD-1]}
+	local options="-c --config -h --help -n --no-color -v --version"
+	local commands="start stop restart status fix log logs convert"
+	local args="$options $commands"
 
 	if (( COMP_CWORD == 1 )); then
-		args="-c --config -h --help start stop restart status fix log logs convert"
-		COMPREPLY=( $(compgen -W "$args" -- "$cur") )
-
-	elif (( COMP_CWORD == 2 )); then
+		mapfile -t COMPREPLY < <(compgen -W "$args" -- "$cur")
+	elif [[ "$prev2" =~ ^(start|stop|restart)$ ]]; then
+		return 0
+	else
 		local i name jobs pid_dir="/var/run/supervisor.sh"
 
 		case "$prev" in
@@ -19,7 +22,7 @@ _supervisor_sh() {
 						jobs+="$name "
 					fi
 				done
-				COMPREPLY=( $(compgen -W "$jobs" -- "$cur") )
+				mapfile -t COMPREPLY < <(compgen -W "$jobs" -- "$cur")
 				;;
 
 			stop|restart)
@@ -29,7 +32,19 @@ _supervisor_sh() {
 						jobs+="$name "
 					fi
 				done
-				COMPREPLY=( $(compgen -W "$jobs" -- "$cur") )
+				mapfile -t COMPREPLY < <(compgen -W "$jobs" -- "$cur")
+				;;
+
+			-h|--help|-v|--version|status|fix|log|logs|convert)
+				return 0
+				;;
+
+			-c|--config)
+				mapfile -t COMPREPLY < <(compgen -f -- "$cur")
+				;;
+
+			*)
+				mapfile -t COMPREPLY < <(compgen -W "$args" -- "$cur")
 				;;
 		esac
 	fi
