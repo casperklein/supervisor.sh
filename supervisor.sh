@@ -105,17 +105,14 @@ _read_config_file() {
 		exit 1
 	fi >&2
 
-	__yq_info() {
-		echo "There are at least two, that have the same name."
-		echo "$APP depends on 'yq' from: https://github.com/mikefarah/yq"
-		echo "The Debian repository, for example, offers 'yq' from: https://github.com/kislyuk/yq"
-	}
-
 	# Check if the correct yq version
 	if [[ "$(yq --version)" != "yq (https://github.com/mikefarah/yq/)"* ]]; then
 		echo "Error: Wrong 'yq' program detected."
 		echo
-		__yq_info
+		echo "There are at least two, that have the same name:"
+		echo
+		echo "$APP depends on 'yq' from: https://github.com/mikefarah/yq"
+		echo "The Debian repository, for example, provides 'yq' from: https://github.com/kislyuk/yq"
 		echo
 		exit 1
 	fi >&2
@@ -136,32 +133,6 @@ _read_config_file() {
 	mapfile -t JOB_REQUIRED  < <(yq -r '.jobs[].required  // "no"'          "$CONFIG_FILE") # Default value is            'no', instead of 'null'
 	mapfile -t JOB_LOGFILE   < <(yq -r '.jobs[].logfile   // "/dev/stdout"' "$CONFIG_FILE") # Default value is   '/dev/stdout', instead of 'null'
 	mapfile -t JOB_AUTOSTART < <(yq -r '.jobs[].autostart // "on"'          "$CONFIG_FILE") # Default value is            'on', instead of 'null'
-
-	# Some simple tests, to see if the parsing of the YAML file was successful
-	__show_error_and_exit() {
-		if [ "$1" == "ARRAY" ]; then
-			echo "Internal error: Wrong element count for array $2"
-		else
-			echo "Internal error: Variable '$2' is empty"
-		fi
-		echo
-		echo "The cause for that is most likely the usage of the wrong 'yq' program."
-		__yq_info
-		echo
-		exit 1
-	} >&2
-
-	[ -z "$LOG_FILE" ]                   && __show_error_and_exit "VAR" "LOG_FILE"
-	[ -z "$SIGTERM_GRACE_PERIOD" ]       && __show_error_and_exit "VAR" "SIGTERM_GRACE_PERIOD"
-	[ -z "$KEEP_RUNNING" ]               && __show_error_and_exit "VAR" "KEEP_RUNNING"
-
-	local count=${#JOB_NAME[@]}
-	(( count !=  ${#JOB_RESTART[@]} ))   && __show_error_and_exit "ARRAY" "JOB_RESTART"
-	(( count !=  ${#JOB_REQUIRED[@]} ))  && __show_error_and_exit "ARRAY" "JOB_REQUIRED"
-	(( count !=  ${#JOB_LOGFILE[@]} ))   && __show_error_and_exit "ARRAY" "JOB_LOGFILE"
-	(( count !=  ${#JOB_AUTOSTART[@]} )) && __show_error_and_exit "ARRAY" "JOB_AUTOSTART"
-
-	return 0
 }
 
 _status() {
