@@ -112,3 +112,9 @@ supervisor.sh -c /etc/supervisor.yaml convert
 # Now you can use supervisor.sh without the 'yq' dependency
 supervisor.sh -c /etc/supervisor.yaml.sh <command>
 ```
+
+### Convert using Docker
+
+```bash
+docker run --rm -v "${PWD}":/workdir -u root --entrypoint /bin/sh mikefarah/yq -c "apk add bash; bash -c './supervisor.sh -c supervisor.yaml convert'"
+```
