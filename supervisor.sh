@@ -59,7 +59,7 @@ _usage() {
 		  stop  <job>      Stop job.
 		  restart          Restart daemon.
 		  restart <job>    Restart job.
-		  status           Show process status.
+		  status           Show process states.
 		  fix              Fix unclean shutdown.
 		  log              Show continuously the $APP log.
 		  logs             Show continuously the $APP log + job logs.
