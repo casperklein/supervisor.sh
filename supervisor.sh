@@ -445,9 +445,10 @@ _start_job_cli() {
 		if [ -f "$PID_DIR/$name.pid.stopped" ]; then
 			# Request job start once
 			if [ -f "$PID_DIR/$name.pid.start" ]; then
-				echo -e "Error: Job start already in progress\n" >&2
+				echo "Error: Job is already being started."
+				echo
 				return 1
-			fi
+			fi >&2
 
 			# Request job start
 			: >"$PID_DIR/$name.pid.start"
@@ -624,7 +625,10 @@ case "${1:-}" in
 			echo
 			exit 1
 		fi >&2
-		echo -e "Converting '$CONFIG_FILE' to Bash --> '$CONFIG_FILE.sh'\n"
+
+		echo "Converting '$CONFIG_FILE' to Bash --> '$CONFIG_FILE.sh'"
+		echo
+
 		# Display the attributes and value of each variable
 		declare -p                               \
 			LOG_FILE                         \
@@ -698,7 +702,7 @@ esac
 
 for i in "${!JOB_NAME[@]}"; do
 	if [[ -z "${JOB_NAME[i]}" || -z "${JOB_COMMAND[i]}" ]]; then
-		_status "Error: Parsing job $i failed. Check $CONFIG_FILE"
+		_status "Error: Parsing job '$i' failed. Check configuration file: $CONFIG_FILE"
 		echo
 		exit 1
 	fi >&2
