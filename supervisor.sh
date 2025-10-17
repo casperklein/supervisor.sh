@@ -12,7 +12,7 @@ shopt -s nullglob        # Return nothing if '*' does not expand
 # Global variables
 APP="supervisor.sh"
 APP_PATH=$(readlink -f "$0")
-VER=0.7
+VER=0.8
 
 PID_DIR="/run/$APP"
 PID_FILE="$PID_DIR/$APP.pid"
