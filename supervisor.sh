@@ -72,23 +72,18 @@ _usage() {
 	exit 0
 }
 
-# Check if config file exist and is readable
-_check_config_file() {
+_read_config_file() {
 	if [ ! -f "$CONFIG_FILE" ]; then
 		echo "Error: Configuration file '$CONFIG_FILE' not found."
 		echo
 		exit 1
-	fi
+	fi >&2
+
 	if [ ! -r "$CONFIG_FILE" ]; then
 		echo "Error: Configuration file '$CONFIG_FILE' is not accessible."
 		echo
 		exit 1
-	fi
-} >&2
-
-# Parse config file and create global variables
-_read_config_file() {
-	_check_config_file
+	fi >&2
 
 	# Is the config file a Bash script (converted from yaml)?
 	if [ "$(head -c 7 "$CONFIG_FILE")" == "declare" ]; then
