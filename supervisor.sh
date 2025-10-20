@@ -522,6 +522,11 @@ while [[ "${1:-}" == -* ]]; do
 			exit
 			;;
 
+		--)
+			shift
+			break
+			;;
+
 		--daemon)
 			break
 			;;
