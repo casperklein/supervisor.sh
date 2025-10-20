@@ -238,6 +238,8 @@ _fix_unclean_shutdown() {
 }
 
 _stop_app() {
+	_exit_if_app_is_not_running
+
 	local app_pid
 	app_pid=$(<"$PID_FILE")
 
@@ -250,8 +252,6 @@ _stop_app() {
 		# Trigger _clean_up()
 		exit
 	fi
-
-	_exit_if_app_is_not_running
 
 	_status "Stopping $APP ($app_pid)"
 	STOP_ANNOUNCED=1
