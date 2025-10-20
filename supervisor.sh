@@ -538,8 +538,11 @@ while [[ "${1:-}" == -* ]]; do
 	esac
 done
 
-_read_config_file
-(( NO_COLOR == 1 )) && COLOR=""
+# Some commands don’t require the config file, e.g. status / start <job> / stop
+if ! [[ "${1:-}" == "status" || "${1:-}" == "start" && -n "${2:-}" ||"${1:-}" == "stop" && -z "${2:-}" ]]; then
+	_read_config_file
+fi
+(( NO_COLOR == 1 )) && COLOR="" # CLI option > config file
 
 cd /
 mkdir -p "$PID_DIR"
