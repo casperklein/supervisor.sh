@@ -23,7 +23,7 @@ Configuration file:
   Provide '--config' to specify a custom configuration file.
 
 Options:
-  -c, --config     Specify config file, e.g. 'supervisor.sh -c /path/config.yaml'.
+  -c, --config     Specify configuration file, e.g. 'supervisor.sh -c /path/config.yaml'.
   -h, --help       Show this help.
   -n, --no-color   Disable color usage.
   -v, --version    Show version.
@@ -39,8 +39,8 @@ Commands:
   fix              Fix unclean shutdown.
   log              Show continuously the supervisor.sh log.
   logs             Show continuously the supervisor.sh log + job logs.
-  convert          Convert the YAML config file to Bash. This allows the usage
-                   without the 'yq' dependency.
+  convert          Convert the YAML configuration file to Bash. This allows the
+                   usage without the 'yq' dependency.
 
 If no command is provided, supervisor.sh will start in foreground.
 ```
