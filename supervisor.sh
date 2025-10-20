@@ -193,7 +193,7 @@ _delete_runtime_files() {
 }
 
 _fix_unclean_shutdown() {
-	local i j name pid signal check_success=0
+	local i j name pid signal wait_grace_period=0
 
 	if _check_clean_shutdown; then
 		echo "Everything is fine, no action required."
@@ -211,16 +211,14 @@ _fix_unclean_shutdown() {
 					_status "Sending $signal to $name ($pid)"
 					kill -"$signal" -"$pid" 2>/dev/null || true
 					if [ "$signal" == "SIGTERM" ]; then
-						check_success=1
-					else
-						check_success=0
+						wait_grace_period=1
 					fi
 				fi
 			fi
 		done
-		if (( check_success == 1 )); then
-			check_success=0
-			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD}s before sending SIGKILL to possibly still running jobs."
+		if (( wait_grace_period == 1 )); then
+			wait_grace_period=0
+			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD}s before sending SIGKILL to any jobs that are still running."
 			sleep "$SIGTERM_GRACE_PERIOD"
 		else
 			break
