@@ -47,7 +47,7 @@ _usage() {
 		  Provide '--config' to specify a custom configuration file.
 
 		Options:
-		  -c, --config     Specify config file, e.g. '$APP -c /path/config.yaml'.
+		  -c, --config     Specify configuration file, e.g. '$APP -c /path/config.yaml'.
 		  -h, --help       Show this help.
 		  -n, --no-color   Disable color usage.
 		  -v, --version    Show version.
@@ -63,8 +63,8 @@ _usage() {
 		  fix              Fix unclean shutdown.
 		  log              Show continuously the $APP log.
 		  logs             Show continuously the $APP log + job logs.
-		  convert          Convert the YAML config file to Bash. This allows the usage
-		                   without the 'yq' dependency.
+		  convert          Convert the YAML configuration file to Bash. This allows the
+		                   usage without the 'yq' dependency.
 
 		If no command is provided, $APP will start in foreground.
 
@@ -592,7 +592,7 @@ case "${1:-}" in
 
 	convert)
 		if (( CONFIG_FILE_BASH == 1 )); then
-			echo "Error: Config file '$CONFIG_FILE' is already converted to Bash"
+			echo "Error: Configuration file '$CONFIG_FILE' is already converted to Bash"
 			echo
 			exit 1
 		fi >&2
