@@ -5,7 +5,10 @@
 # Dependencies: yq, bash >= 5.1
 # BASH_VERSION 5.1 or higher is required to support 'wait -p'
 
-set -ueo pipefail        # Exit on errors
+# Also these common core utilities, typically preinstalled on most Linux distributions, are used:
+# basename cat head kill mkdir readlink rm sed seq setsid sleep tail tee touch
+
+set -ueo pipefail        # Exit on errors and unset variables
 shopt -s inherit_errexit # Exit on errors - also in sub-shells
 shopt -s nullglob        # Return nothing if '*' does not expand
 
@@ -100,7 +103,7 @@ _read_config_file() {
 		exit 1
 	fi >&2
 
-	# Check if the correct yq version
+	# Check if the correct 'yq' program is used
 	if [[ "$(yq --version)" != "yq (https://github.com/mikefarah/yq/)"* ]]; then
 		echo "Error: Wrong 'yq' program detected."
 		echo
@@ -166,6 +169,7 @@ _exit_if_app_is_already_running() {
 }
 
 # Check if supervisor was gracefully stopped (Is PID_DIR clean?)
+# Test: kill -9 $(</run/supervisor.sh/supervisor.sh.pid)
 _check_clean_shutdown() {
 	local i
 	if ! _is_app_running; then
@@ -192,6 +196,7 @@ _delete_runtime_files() {
 	rm -f "$PID_DIR/.sigterm"
 }
 
+# Stop any running jobs and delete runtime files
 _fix_unclean_shutdown() {
 	local i j name pid signal wait_grace_period=0
 
@@ -225,6 +230,7 @@ _fix_unclean_shutdown() {
 		fi
 	done
 	sleep 1
+
 	_delete_runtime_files
 	_status "Fix was successful."
 	echo
@@ -562,7 +568,7 @@ case "${1:-}" in
 	stop)
 		# Stop supervisor or job?
 		if [ -z "${2:-}" ]; then
-			# Stop daemon or interactive run
+			# Stop supervisor
 			_stop_app
 		else
 			# Stop job if running
@@ -660,7 +666,7 @@ case "${1:-}" in
 		_exit_if_unclean_shutdown
 		_exit_if_app_is_already_running
 		set -- "--daemon" # Pretend to be already in daemon mode --> Don't start as daemon
-		FOREGROUND=1      # Run interactively, not as daemon
+		FOREGROUND=1      # Run in foreground, not as daemon
 		;;
 
 	*)
