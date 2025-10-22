@@ -582,9 +582,10 @@ case "${1:-}" in
 
 		# Restart supervisor or job?
 		if [ -z "${2:-}" ]; then
-			LAST_ARG=$(tr '\0' '\n' < "/proc/$(<"$PID_FILE")/cmdline" | tail -1)
-			if [ "$LAST_ARG" != "--daemon" ]; then
-				echo "Error: $APP is running in interactive mode, not as daemon."
+			# Check if supervisor runs as daemon (required for restart)
+			mapfile -t -d $'\0' SV_ARGS < "/proc/$(<"$PID_FILE")/cmdline"
+			if [ "${SV_ARGS[-1]}" != "--daemon" ]; then
+				echo "Error: $APP is not running as daemon."
 				echo
 				exit 1
 			fi >&2
