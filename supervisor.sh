@@ -6,7 +6,7 @@
 # BASH_VERSION 5.1 or higher is required to support 'wait -p'
 
 # Also these common core utilities, typically preinstalled on most Linux distributions, are used:
-# basename cat kill mkdir readlink rm sed seq setsid sleep tail tee touch
+# basename cat kill mkdir readlink rm seq setsid sleep tail
 
 set -ueo pipefail        # Exit on errors and unset variables
 shopt -s inherit_errexit # Exit on errors - also in sub-shells
@@ -619,8 +619,8 @@ case "${1:-}" in
 		echo "Converting '$CONFIG_FILE' to Bash --> '$CONFIG_FILE.sh'"
 		echo
 
-		# Display the attributes and value of each variable
-		declare -p                               \
+		# Get the attributes and value of each variable
+		VARS=$(declare -p                         \
 			LOG_FILE                         \
 			SIGTERM_GRACE_PERIOD             \
 			KEEP_RUNNING                     \
@@ -630,10 +630,10 @@ case "${1:-}" in
 			JOB_RESTART                      \
 			JOB_REQUIRED                     \
 			JOB_LOGFILE                      \
-			JOB_AUTOSTART                    \
-			| sed 's/^declare /declare -g /' \
-			| tee "$CONFIG_FILE".sh
-		echo
+			JOB_AUTOSTART
+		)
+		# Declare variables as global and write config file
+		echo "${VARS//declare/declare -g}" > "$CONFIG_FILE".sh
 		exit
 		;;
 
@@ -803,8 +803,7 @@ _start_job() {
 	local i=$1
 
 	# Prevent restart loop if log file is not writeable
-	touch "${JOB_LOGFILE[i]}" 2>/dev/null || true # 'test -w' expects the file to exist. Create it first. Fails if log file is /dev/stdout
-	if [ ! -w "${JOB_LOGFILE[i]}" ]; then
+	if ! { : >> "${JOB_LOGFILE[i]}"; } 2>/dev/null; then
 		_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
 		_status "Error: Job '${JOB_NAME[i]}' could not be started. Log file '${JOB_LOGFILE[i]}' is not writeable."
 		# 0 is mandatory. Any 'return' executed within a trap handler, returns the exit status of the last command
