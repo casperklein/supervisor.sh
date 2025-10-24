@@ -411,7 +411,6 @@ _start_job_cli() {
 	local name=$1 job_pid
 
 	if [ -f "$PID_DIR/$name.pid" ]; then
-		job_pid=$(<"$PID_DIR/$name.pid")
 		if [ -f "$PID_DIR/$name.pid.stopped" ]; then
 			# Request job start once
 			if [ -f "$PID_DIR/$name.pid.start" ]; then
@@ -434,8 +433,14 @@ _start_job_cli() {
 				sleep 0.2
 			done
 
-			_status "$name started ($(<"$PID_DIR/$name.pid"))"
-			return 0
+			job_pid=$(<"$PID_DIR/$name.pid")
+			if [ -n "$job_pid" ]; then
+				_status "$name started ($(<"$PID_DIR/$name.pid"))"
+				return 0
+			else
+				_status "Error: '$name' failed to start. Check supervisor output or logfile." >&2
+				return 1
+			fi
 		else
 			echo -e "Error: '$name' is already running\n" >&2
 			return 1
