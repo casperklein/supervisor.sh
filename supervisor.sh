@@ -442,11 +442,13 @@ _start_job_cli() {
 				return 1
 			fi
 		else
-			echo -e "Error: '$name' is already running\n" >&2
+			echo "Error: '$name' is already running" >&2
+			echo >&2
 			return 1
 		fi
 	else
-		echo -e "Error: Job '$name' not found\n" >&2
+		echo "Error: Job '$name' not found" >&2
+		echo >&2
 		return 1
 	fi
 }
@@ -487,11 +489,13 @@ _stop_job_cli() {
 			_status "$name stopped ($job_pid)"
 			return 0
 		else
-			echo -e "Error: $name is not running\n" >&2
+			echo "Error: $name is not running" >&2
+			echo >&2
 			exit 1
 		fi
 	else
-		echo -e "Error: Job '$name' not found\n" >&2
+		echo "Error: Job '$name' not found" >&2
+		echo >&2
 		exit 1
 	fi
 }
