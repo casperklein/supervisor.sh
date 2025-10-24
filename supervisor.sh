@@ -6,7 +6,7 @@
 # BASH_VERSION 5.1 or higher is required to support 'wait -p'
 
 # Also these common core utilities, typically preinstalled on most Linux distributions, are used:
-# basename cat head kill mkdir readlink rm sed seq setsid sleep tail tee touch
+# basename cat kill mkdir readlink rm sed seq setsid sleep tail tee touch
 
 set -ueo pipefail        # Exit on errors and unset variables
 shopt -s inherit_errexit # Exit on errors - also in sub-shells
@@ -88,8 +88,10 @@ _read_config_file() {
 		exit 1
 	fi >&2
 
-	# Is the config file a Bash script (converted from yaml)?
-	if [ "$(head -c 7 "$CONFIG_FILE")" == "declare" ]; then
+	# Is the config file a Bash script (converted from YAML)?
+	local marker
+	read -r -N 7 marker < "$CONFIG_FILE" || true # 'read' may fail if the file is empty or smaller than 7 bytes
+	if [ "$marker" == "declare" ]; then
 		CONFIG_FILE_BASH=1
 		# shellcheck disable=1090
 		source "$CONFIG_FILE"
