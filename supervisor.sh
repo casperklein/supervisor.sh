@@ -6,7 +6,7 @@
 # BASH_VERSION 5.1 or higher is required to support 'wait -p'
 
 # Also these common core utilities, typically preinstalled on most Linux distributions, are used:
-# basename cat kill mkdir readlink rm seq setsid sleep tail
+# basename cat kill mkdir readlink rm setsid sleep tail
 
 set -ueo pipefail        # Exit on errors and unset variables
 shopt -s inherit_errexit # Exit on errors - also in sub-shells
@@ -323,28 +323,39 @@ _show_process_states() {
 	padding_state=$(__get_max_element_length_from_array "${state[@]}")
 	padding_pid=$(  __get_max_element_length_from_array "${pid[@]}")
 
-	__print_table_line() {
-		# $1	Filler
-		# $2	left edge
-		# $3	Separator
-		# $4	Right edge
-
-		# 1st column
-		printf -- "%s"      "$2"
-		printf -- "%0.s$1"  $(seq 1 $(( padding_name  + 2 )))
-
-		# 2nd column
-		printf -- "%s"      "$3"
-		printf -- "%0.s$1"  $(seq 1 $(( padding_state + 2 )))
-
-		# 3rd column
-		printf -- "%s"      "$3"
-		printf -- "%0.s$1"  $(seq 1 $(( padding_pid   + 2 )))
-		printf -- "%s\n"    "$4"
+	# Repeat $1 "$2"-times
+	__str_repeat(){
+		local char=$1 count=$2 output
+		printf -v output -- "%${count}s"
+		printf -- "%s" "${output// /$char}"
 	}
 
-	__print_spaces() {
-		printf -- "%${1}s"
+	__print_table_line() {
+		# $1   Filler
+		# $2   Start character
+		# $3   Separator
+		# $4   End character
+
+		# Start character
+		printf -- "%s" "$2"
+
+		# 1st column
+		__str_repeat "$1" $(( padding_name  + 2 ))
+
+		# Separator
+		printf -- "%s" "$3"
+
+		# 2nd column
+		__str_repeat "$1" $(( padding_state  + 2 ))
+
+		# Separator
+		printf -- "%s" "$3"
+
+		# 3rd column
+		__str_repeat "$1" $(( padding_pid  + 2 ))
+
+		# End character
+		printf -- "%s\n" "$4"
 	}
 
 	# Top border
@@ -369,7 +380,7 @@ _show_process_states() {
 			else
 				printf -- "%s"       "${name[i]}"
 			fi
-			__print_spaces $(( padding_name - ${#name[i]} + 1 ))
+			__str_repeat " " $(( padding_name - ${#name[i]} + 1 ))
 
 			# 2nd column (State)
 			printf -- "│ "
@@ -378,7 +389,7 @@ _show_process_states() {
 				running) printf -- "%s" "$green${state[i]}$reset" ;; # Print "running" jobs in green
 				stopped) printf -- "%s"   "$red${state[i]}$reset" ;; # Print "stopped" jobs in red
 			esac
-			__print_spaces $(( padding_state - ${#state[i]} + 1 ))
+			__str_repeat " " $(( padding_state - ${#state[i]} + 1 ))
 
 			# 3rd column (PID)
 			printf -- "│ "
@@ -386,7 +397,7 @@ _show_process_states() {
 				PID) printf -- "%s" "$white${pid[i]}$reset" ;;
 				  *) printf -- "%s"       "${pid[i]}"       ;;
 			esac
-			__print_spaces $(( padding_pid - ${#pid[i]} + 1 ))
+			__str_repeat " " $(( padding_pid - ${#pid[i]} + 1 ))
 			echo "│"
 		else
 			# Colorless table
