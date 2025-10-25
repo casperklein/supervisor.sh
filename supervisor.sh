@@ -136,12 +136,12 @@ _read_config_file() {
 }
 
 _status() {
-	[ -n "$COLOR" ] && (( FOREGROUND == 1 )) && printf -- '%s' "$COLOR" # set color
+	[ -n "$COLOR" ] && (( FOREGROUND == 1 )) && printf -- "%s" "$COLOR" # set color
 
-	printf -- '%(%F %T)T ' -1 # Print current date/time
-	printf -- '%s\n' "$1"     # Print status message
+	printf -- "%(%F %T)T " -1 # Print current date/time
+	printf -- "%s\n" "$1"     # Print status message
 
-	[ -n "$COLOR" ] && (( FOREGROUND == 1 )) && printf -- '%s' $'\e[0m' # reset color
+	[ -n "$COLOR" ] && (( FOREGROUND == 1 )) && printf -- "%s" $'\e[0m' # reset color
 	return 0
 }
 
@@ -362,7 +362,7 @@ _show_process_states() {
 			# Manual padding is required instead
 
 			# 1st column (Name)
-			printf -- '│ '
+			printf -- "│ "
 			if (( i == 0 )); then
 				# Print header row in bright white
 				printf -- "%s" "$white${name[i]}$reset"
@@ -372,7 +372,7 @@ _show_process_states() {
 			__print_spaces $(( padding_name - ${#name[i]} + 1 ))
 
 			# 2nd column (State)
-			printf -- '│ '
+			printf -- "│ "
 			case "${state[i]}" in
 				  State) printf -- "%s" "$white${state[i]}$reset" ;; # Print header row in bright white
 				running) printf -- "%s" "$green${state[i]}$reset" ;; # Print "running" jobs in green
@@ -381,7 +381,7 @@ _show_process_states() {
 			__print_spaces $(( padding_state - ${#state[i]} + 1 ))
 
 			# 3rd column (PID)
-			printf -- '│ '
+			printf -- "│ "
 			case "${pid[i]}" in
 				PID) printf -- "%s" "$white${pid[i]}$reset" ;;
 				  *) printf -- "%s"       "${pid[i]}"       ;;
@@ -391,11 +391,11 @@ _show_process_states() {
 		else
 			# Colorless table
 			# 1st column (Name)
-			printf -- '│ %-*s '    "$padding_name"  "${name[i]}"
+			printf -- "│ %-*s "    "$padding_name"  "${name[i]}"
 			# 2nd column (State)
-			printf -- '│ %-*s '    "$padding_state" "${state[i]}"
+			printf -- "│ %-*s "    "$padding_state" "${state[i]}"
 			# 3rd column (PID)
-			printf -- '│ %-*s │\n' "$padding_pid"   "${pid[i]}"
+			printf -- "│ %-*s │\n" "$padding_pid"   "${pid[i]}"
 		fi
 
 		# Separate header row from table body
