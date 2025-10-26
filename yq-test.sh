@@ -11,7 +11,7 @@ CONFIG_FILE="supervisor.yaml"
 LOG_FILE=$(            yq -r '.supervisor.logfile // "/dev/stdout"'    "$CONFIG_FILE")
 SIGTERM_GRACE_PERIOD=$(yq -r '.supervisor.sigterm_grace_period // "2"' "$CONFIG_FILE")
 KEEP_RUNNING=$(        yq -r '.supervisor.keep_running // "off"'       "$CONFIG_FILE")
-COLOR=$(               yq -r '.supervisor.color // ""'                 "$CONFIG_FILE")
+COLOR=$(               yq -r '.supervisor.color // "FOO-BAR"'          "$CONFIG_FILE")
 
 # Job config
 mapfile -t JOB_NAME      < <(yq -r '.jobs[].name      // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
@@ -41,8 +41,10 @@ _show_error_and_exit() {
 [ -z "$LOG_FILE" ]                   && _show_error_and_exit "VAR" "LOG_FILE"
 [ -z "$SIGTERM_GRACE_PERIOD" ]       && _show_error_and_exit "VAR" "SIGTERM_GRACE_PERIOD"
 [ -z "$KEEP_RUNNING" ]               && _show_error_and_exit "VAR" "KEEP_RUNNING"
+[ -z "$COLOR" ]                      && _show_error_and_exit "VAR" "COLOR"
 
 count=${#JOB_NAME[@]}
+(( count !=  ${#JOB_COMMAND[@]} ))   && _show_error_and_exit "ARRAY" "JOB_COMMAND"
 (( count !=  ${#JOB_RESTART[@]} ))   && _show_error_and_exit "ARRAY" "JOB_RESTART"
 (( count !=  ${#JOB_REQUIRED[@]} ))  && _show_error_and_exit "ARRAY" "JOB_REQUIRED"
 (( count !=  ${#JOB_LOGFILE[@]} ))   && _show_error_and_exit "ARRAY" "JOB_LOGFILE"
