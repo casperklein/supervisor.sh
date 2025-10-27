@@ -701,9 +701,10 @@ esac
 
 # Begin server only part
 
+# Check for required keys in jobs configuration
 for i in "${!JOB_NAME[@]}"; do
 	if [[ -z "${JOB_NAME[i]}" || -z "${JOB_COMMAND[i]}" ]]; then
-		_status "Error: Parsing job '$i' failed. Check configuration file: $CONFIG_FILE"
+		_status "Error: Parsing job #$((++i)) failed. The 'name' or 'command' key cannot be empty/missing. Check configuration file: $CONFIG_FILE"
 		echo
 		exit 1
 	fi >&2
