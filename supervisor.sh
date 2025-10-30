@@ -3,11 +3,14 @@
 # shellcheck disable=2178,2128 # shellcheck bug
 
 # Dependencies: yq, bash >= 5.1
-# BASH_VERSION 5.1 or higher is required to support 'wait -p'
+# Bash 5.1 or later is required to support 'wait -p'
 
 # Also these common core utilities, typically preinstalled on most Linux distributions, are used:
 # basename cat kill mkdir readlink rm setsid sleep tail
 
+# Source: https://github.com/casperklein/supervisor.sh/
+
+# Shell options
 set -ueo pipefail        # Exit on errors and unset variables
 shopt -s inherit_errexit # Exit on errors - also in sub-shells
 shopt -s nullglob        # Return nothing if '*' does not expand
