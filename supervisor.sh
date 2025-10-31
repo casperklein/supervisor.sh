@@ -5,8 +5,8 @@
 # Dependencies: yq, bash >= 5.1
 # Bash 5.1 or later is required to support 'wait -p'
 
-# Also these common core utilities, typically preinstalled on most Linux distributions, are used:
-# basename cat kill mkdir readlink rm setsid sleep tail
+# Also these common core utilities are used:
+# cat mkdir readlink rm setsid sleep tail
 
 # Source: https://github.com/casperklein/supervisor.sh/
 
@@ -203,7 +203,7 @@ _delete_runtime_files() {
 
 # Stop any running jobs and delete runtime files
 _fix_unclean_shutdown() {
-	local i j name pid signal wait_grace_period=0
+	local i name pid signal wait_grace_period=0
 
 	if _check_clean_shutdown; then
 		echo "Everything is fine, no action required."
@@ -215,7 +215,8 @@ _fix_unclean_shutdown() {
 	for signal in "SIGTERM" "SIGKILL"; do
 		for i in "$PID_DIR"/*.pid; do
 			if [ ! -f "$i.stopped" ]; then
-				name=$(basename "${i:0:-4}")
+				name=${i##*/}
+				name=${name:0:-4}
 				pid=$(<"$i")
 				if kill -0 "$pid" 2>/dev/null; then
 					_status "Sending $signal to $name ($pid)"
@@ -289,11 +290,12 @@ _stop_app() {
 }
 
 _show_process_states() {
-	local i name=("Name") state=("State") pid=("PID")
+	local i basename name=("Name") state=("State") pid=("PID")
 
 	# Get process states
 	for i in "$PID_DIR"/*.pid; do
-		name+=("$(basename "${i:0:-4}")")
+		basename=${i##*/}
+		name+=("${basename:0:-4}")
 		if kill -0 "$(<"$i")" 2>/dev/null; then
 			state+=(running)
 			pid+=("$(<"$i")")
@@ -849,13 +851,16 @@ done
 
 # Start jobs, when USR1 signal is received
 _start_job_trap() {
-	local i j
+	local i name
 	# For jobs that have to be started, a JOB.pid.start file exists
-	for i in "$PID_DIR"/*.pid.start; do
+	for name in "$PID_DIR"/*.pid.start; do
+		name=${name##*/}
+		name=${name:0:-10}
+
 		# Search job
-		for j in "${!JOB_NAME[@]}"; do
-			if [ "${JOB_NAME[j]}" == "$(basename "${i:0:-10}")" ]; then
-				_start_job "$j"
+		for i in "${!JOB_NAME[@]}"; do
+			if [ "${JOB_NAME[i]}" == "$name" ]; then
+				_start_job "$i"
 				# break 2
 			fi
 		done
