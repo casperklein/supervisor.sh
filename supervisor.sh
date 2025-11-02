@@ -485,6 +485,8 @@ _stop_job_cli() {
 			_status "Stopping $name ($job_pid)"
 			kill -SIGTERM -"$job_pid" 2>/dev/null || true
 
+			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD}s before sending SIGKILL."
+
 			# Wait until stopped
 			while kill -0 -"$job_pid" 2>/dev/null; do
 				if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
