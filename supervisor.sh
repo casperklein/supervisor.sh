@@ -754,7 +754,7 @@ _clean_up() {
 				else
 					if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
 						_status "Process still running, sending SIGKILL: ${JOB_NAME[i]} (${PIDS[i]})"
-						kill -9 -"${PIDS[i]}" 2>/dev/null || true
+						kill -SIGKILL -"${PIDS[i]}" 2>/dev/null || true
 					fi
 				fi
 			fi
