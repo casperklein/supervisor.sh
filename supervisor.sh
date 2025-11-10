@@ -218,7 +218,7 @@ _fix_unclean_shutdown() {
 				name=${i##*/}
 				name=${name:0:-4}
 				pid=$(<"$i")
-				if kill -0 "$pid" 2>/dev/null; then
+				if kill -0 -"$pid" 2>/dev/null; then
 					_status "Sending $signal to $name ($pid)"
 					kill -"$signal" -"$pid" 2>/dev/null || true
 					if [ "$signal" == "SIGTERM" ]; then
@@ -296,7 +296,7 @@ _show_process_states() {
 	for i in "$PID_DIR"/*.pid; do
 		basename=${i##*/}
 		name+=("${basename:0:-4}")
-		if kill -0 "$(<"$i")" 2>/dev/null; then
+		if kill -0 -"$(<"$i")" 2>/dev/null; then
 			state+=(running)
 			pid+=("$(<"$i")")
 		else
