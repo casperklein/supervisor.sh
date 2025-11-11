@@ -897,6 +897,7 @@ while :; do
 
 	if [ -z "${JOB_PID:-}" ]; then
 		if (( ${#PIDS[@]} == 0 )); then
+			# Only supervisor is running
 			if [ "$KEEP_RUNNING" == "off" ]; then
 				_status "No more processes are running. Stopping $APP"
 				exit 0
@@ -905,7 +906,9 @@ while :; do
 				continue
 			fi
 		else
-			sleep 0.2 # safety net to slow down a loop in case of a bug
+			# If $JOB_PID is empty while $PIDS is not, 'wait' was interrupted.
+			# This happens when a signal such as SIGUSR1 is received.
+			# JOB_STATUS = 138 = 128 + 10 (SIGUSR1)
 			continue
 		fi
 	fi
