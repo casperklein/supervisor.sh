@@ -426,7 +426,7 @@ _show_process_states() {
 }
 
 _start_job_cli() {
-	local name=$1 job_pid
+	local name=$1
 
 	if [ -f "$PID_DIR/$name.pid" ]; then
 		if [ -f "$PID_DIR/$name.pid.stopped" ]; then
@@ -440,9 +440,9 @@ _start_job_cli() {
 			# Request job start
 			: >"$PID_DIR/$name.pid.start"
 
-			_status "Starting $name"
+			_status "Starting '$name'"
 
-			# Send USR1 signal to server to trigger the job start
+			# Send USR1 signal to supervisor to trigger the job start
 			# start_job_trap() will then start the job
 			kill -SIGUSR1 "$(<"$PID_FILE")"
 
@@ -451,14 +451,8 @@ _start_job_cli() {
 				sleep 0.2
 			done
 
-			job_pid=$(<"$PID_DIR/$name.pid")
-			if [ -n "$job_pid" ]; then
-				_status "$name started ($(<"$PID_DIR/$name.pid"))"
-				return 0
-			else
-				_status "Error: '$name' failed to start. Check supervisor output or logfile." >&2
-				return 1
-			fi
+			_status "'$name' started ($(<"$PID_DIR/$name.pid"))"
+			return 0
 		else
 			echo "Error: '$name' is already running" >&2
 			echo >&2
