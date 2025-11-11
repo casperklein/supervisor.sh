@@ -306,10 +306,10 @@ _show_process_states() {
 	done
 
 	if (( ${#name[@]} == 1 )); then
-		echo "No processes are running."
+		echo "Error: $APP is not running."
 		echo
-		return 0
-	fi
+		return 1
+	fi >&2
 
 	__get_max_element_length_from_array() {
 		local max_len=0
