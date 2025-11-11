@@ -130,12 +130,14 @@ _read_config_file() {
 	COLOR=$(               yq -r '.supervisor.color // ""'                 "$CONFIG_FILE")
 
 	# Job config
-	mapfile -t JOB_NAME      < <(yq -r '.jobs[].name      // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
-	mapfile -t JOB_COMMAND   < <(yq -r '.jobs[].command   // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
-	mapfile -t JOB_RESTART   < <(yq -r '.jobs[].restart   // "error"'       "$CONFIG_FILE") # Default value is         'error', instead of 'null'
-	mapfile -t JOB_REQUIRED  < <(yq -r '.jobs[].required  // "no"'          "$CONFIG_FILE") # Default value is            'no', instead of 'null'
-	mapfile -t JOB_LOGFILE   < <(yq -r '.jobs[].logfile   // "/dev/stdout"' "$CONFIG_FILE") # Default value is   '/dev/stdout', instead of 'null'
-	mapfile -t JOB_AUTOSTART < <(yq -r '.jobs[].autostart // "on"'          "$CONFIG_FILE") # Default value is            'on', instead of 'null'
+	mapfile -t JOB_NAME          < <(yq -r '.jobs[].name      // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
+	mapfile -t JOB_COMMAND       < <(yq -r '.jobs[].command   // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
+	mapfile -t JOB_RESTART       < <(yq -r '.jobs[].restart   // "error"'       "$CONFIG_FILE") # Default value is         'error', instead of 'null'
+	mapfile -t JOB_REQUIRED      < <(yq -r '.jobs[].required  // "no"'          "$CONFIG_FILE") # Default value is            'no', instead of 'null'
+	mapfile -t JOB_LOGFILE       < <(yq -r '.jobs[].logfile   // "/dev/stdout"' "$CONFIG_FILE") # Default value is   '/dev/stdout', instead of 'null'
+	mapfile -t JOB_AUTOSTART     < <(yq -r '.jobs[].autostart // "on"'          "$CONFIG_FILE") # Default value is            'on', instead of 'null'
+	mapfile -t JOB_RESTART_LIMIT < <(yq -r '.jobs[].restart_limit // "3"'       "$CONFIG_FILE") # Default value is             '3', instead of 'null'
+	declare -A JOB_RESTART_COUNT
 }
 
 _status() {
@@ -437,8 +439,8 @@ _start_job_cli() {
 				return 1
 			fi >&2
 
-			# Request job start
-			: >"$PID_DIR/$name.pid.start"
+			# Set marker
+			_set_job_state "start" "$PID_DIR/$name"
 
 			_status "Starting '$name'"
 
@@ -472,8 +474,7 @@ _stop_job_cli() {
 	if [ -f "$PID_DIR/$name.pid" ]; then
 		job_pid=$(<"$PID_DIR/$name.pid")
 		if kill -0 -"$job_pid" 2>/dev/null; then
-			# Let supervisor know, that the job is stopped on purpose
-			: >"$PID_DIR/$name.pid.stop"
+			_set_job_state "stop" "$PID_DIR/$name"
 
 			# Send SIGTERM to job process group
 			_status "Stopping $name ($job_pid)"
@@ -512,6 +513,37 @@ _stop_job_cli() {
 		echo >&2
 		exit 1
 	fi
+}
+
+_set_job_state() {
+	local state=$1 job_file=$2
+
+	case "$state" in
+		start)
+			: >"$job_file.pid.start"
+			;;
+
+		stop)
+			# Let supervisor know, that the job is stopped on purpose.
+			# This is important
+			# - if the last running job is stopped and supervisor is configured with 'keep_running: off'
+			# - if a job is stopped and configured with 'required: yes'
+			# - if a job is stopped and configured with 'restart: on'
+			# The marker below ensures that supervisor takes no action in these cases.
+			: >"$job_file.pid.stop"
+			;;
+
+		stopped)
+			: >"$job_file.pid"
+			rm -f "$job_file.pid.start"
+			: >"$job_file.pid.stopped"
+			;;
+
+		started)
+			rm -f "$job_file.pid."{start,stop,stopped}
+			;;
+	esac
+	return 0
 }
 
 # Parse options
@@ -743,8 +775,8 @@ _clean_up() {
 			if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stopped" ]; then
 				if ! kill -0 -"${PIDS[i]}" 2>/dev/null; then
 					_status "Process terminated: ${JOB_NAME[i]} (${PIDS[i]})"
-					: >"$PID_DIR/${JOB_NAME[i]}.pid.stopped"
 					unset "PIDS[$i]"
+					_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
 				else
 					if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
 						_status "Process still running, sending SIGKILL: ${JOB_NAME[i]} (${PIDS[i]})"
@@ -796,22 +828,6 @@ fi
 
 _status "$APP started ($$)"
 
-_set_job_state() {
-	local state=$1 job_file=$2
-	case "$state" in
-		stopped)
-			: >"$job_file.pid"
-			rm -f "$job_file.pid."{start,stop}
-			: >"$job_file.pid.stopped"
-			;;
-
-		started)
-			rm -f "$job_file.pid."{start,stop,stopped}
-			;;
-	esac
-	return 0
-}
-
 _start_job() {
 	local i=$1
 
@@ -838,6 +854,7 @@ _start_job() {
 for i in "${!JOB_NAME[@]}"; do
 	if [ "${JOB_AUTOSTART[i]}" == "on" ]; then
 		# Autostart enabled
+		JOB_RESTART_COUNT[i]=0
 		_start_job "$i"
 	else
 		# Autostart disabled
@@ -856,6 +873,9 @@ _start_job_trap() {
 		# Search job
 		for i in "${!JOB_NAME[@]}"; do
 			if [ "${JOB_NAME[i]}" == "$name" ]; then
+				# (Re)set restart count
+				JOB_RESTART_COUNT[i]=0
+
 				_start_job "$i"
 				# break 2
 			fi
@@ -888,6 +908,29 @@ _kill_process_group() {
 	fi
 }
 
+_exit_app_if_job_is_required() {
+	local i=$1
+	# Stop the supervisor if a required job has stopped
+	if [ "${JOB_REQUIRED[i]}" == "yes" ]; then
+		# Keep running, if the job was stopped on purpose (via the 'stop' command)
+		if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
+			_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
+			_status "Required job '${JOB_NAME[i]}' stopped. Shutting down.."
+			_stop_app
+		fi
+	fi
+}
+
+_clean_up_job() {
+	local i=$1
+
+	# Kill possible orphaned zombie processes
+	_kill_process_group "$i"
+
+	unset "PIDS[$i]"
+	_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
+}
+
 while :; do
 	if wait -n -p JOB_PID; then
 		JOB_STATUS=0
@@ -915,51 +958,39 @@ while :; do
 
 	for i in "${!PIDS[@]}"; do
 		if [ "${PIDS[i]}" == "$JOB_PID" ]; then
-
 			if [ -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
 				_status "Process termination is expected: ${JOB_NAME[i]} (${PIDS[i]})"
 			fi
 
-			# Restart job if necessary
-			if [[ "${JOB_RESTART[i]}" == "error" && $JOB_STATUS -gt 0 || "${JOB_RESTART[i]}" == "on" ]]; then
-				if [[ "${JOB_RESTART[i]}" == "error" && $JOB_STATUS -gt 0 && ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
-					_status "Process failed [$JOB_STATUS]: ${JOB_NAME[i]} (${PIDS[i]})"
-				else
-					_status "Process terminated: ${JOB_NAME[i]} (${PIDS[i]})"
-				fi
-
-				# Kill possible orphaned zombie processes
-				_kill_process_group "$i"
-
-				# Clean up job
-				unset "PIDS[$i]"
-
-				# Restart job, if job was not stopped on purpose (via the 'stop' command)
-				if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
-					_status "Restarting: ${JOB_NAME[i]}"
-					_start_job "$i"
-				else
-					_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
-				fi
+			if [[ $JOB_STATUS -gt 0 && ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
+				_status "Process failed [$JOB_STATUS]: ${JOB_NAME[i]} (${PIDS[i]})"
 			else
 				_status "Process terminated: ${JOB_NAME[i]} (${PIDS[i]})"
+			fi
 
-				# Kill possible orphaned zombie processes
-				_kill_process_group "$i"
+			_clean_up_job "$i"
 
-				# Clean up job
-				unset "PIDS[$i]"
-
-				# Stop the supervisor if a required job has stopped
-				if [ "${JOB_REQUIRED[i]}" == "yes" ]; then
-					# Keep running, if the job was stopped on purpose (via the 'stop' command)
-					if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
-						_status "Required job '${JOB_NAME[i]}' stopped. Shutting down.."
-						_stop_app
+			# Restart job if necessary
+			if [[ "${JOB_RESTART[i]}" == "error" && $JOB_STATUS -gt 0 || "${JOB_RESTART[i]}" == "on" ]]; then
+				if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
+					# Job was stopped unexpected
+					# Check if restart limit was reached
+					if (( JOB_RESTART_LIMIT[i] == 0 || JOB_RESTART_COUNT[i] < JOB_RESTART_LIMIT[i] )); then
+						(( ++JOB_RESTART_COUNT[i] ))
+						if (( JOB_RESTART_LIMIT[i] == 0 )); then
+							_status "Restarting (${JOB_RESTART_COUNT[i]}): ${JOB_NAME[i]}"
+						else
+							_status "Restarting (${JOB_RESTART_COUNT[i]}/${JOB_RESTART_LIMIT[i]}): ${JOB_NAME[i]}"
+						fi
+						_start_job "$i"
+					else
+						_status "Restart limit (${JOB_RESTART_LIMIT[i]}) reached: ${JOB_NAME[i]}"
+						_exit_app_if_job_is_required "$i"
 					fi
 				fi
-
-				_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
+			else
+				# No restart
+				_exit_app_if_job_is_required "$i"
 			fi
 		fi
 	done
