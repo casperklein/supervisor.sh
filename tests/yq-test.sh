@@ -5,7 +5,9 @@
 set -ueo pipefail
 
 APP="supervisor.sh"
-CONFIG_FILE="supervisor.yaml"
+CONFIG_FILE="../supervisor.yaml"
+
+cd "$(dirname "$0")"
 
 # supervisor config
 LOG_FILE=$(            yq -r '.supervisor.logfile // "/dev/stdout"'    "$CONFIG_FILE")

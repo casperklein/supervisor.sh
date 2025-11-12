@@ -1,0 +1,16 @@
+supervisor:
+  sigterm_grace_period: 2
+  color: "\e[0;34m" # blue text color
+  logfile: "/tmp/supervisor-test.log"
+
+jobs:
+  - name: "parent.sh"
+    command: "parent.sh" # The child is not behaving and ignores SIGTERM
+
+  - name: "fail.sh"
+    command: "fail.sh"
+    restart_limit: 2
+    required: "yes"
+
+  - name: "test"
+    command: "supervisor.sh -c /scripts/supervisor.yaml stop test > /dev/null"
