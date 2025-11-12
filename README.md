@@ -1,13 +1,37 @@
-# supervisor.sh
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.png">
+    <img alt="" src="assets/logo-light.png">
+  </picture>
+</div>
 
 ## Description
 
-`supervisor.sh` is a lightweight Bash script for managing processes based on a YAML configuration file. It runs in foreground or as a daemon, handling the starting, stopping, and monitoring of multiple programs or scripts. This makes it useful for systems where a simple, standalone process manager is needed, or for containerized environments where minimal overhead is desired.
+`supervisor.sh` is a process supervisor inspired by [Supervisord](https://supervisord.org/) written in Bash.
+It's a lightweight _pure_ Bash solution, providing basic functionality to supervise processes (called jobs). The configuration is done in a YAML configuration file. By default, all jobs are automatically started and in case of an error (exit code > 0) restarted.
+
+For environments like Docker container, where minimal overhead is desired, the dependency on `yq` can be removed by converting the YAML configuration to Bash.
+
+### Foreground mode
+
+Without the explicit `start` command, `supervisor.sh` runs in the foreground. It can be stopped by:
+
+1. Pressing CTRL-C, which is equivalent to the SIGINT signal.
+2. Running `supervisor.sh stop` in another session.
+
+### Daemon mode
+
+To run the supervisor in daemon mode, use `supervisor.sh start`.
+
+### Bash completion
+
+todo
 
 ## Dependencies
 
 - Bash >= 5.1
 - [yq](https://github.com/mikefarah/yq) - a lightweight and portable command-line YAML processor
+- The following core utilities: cat mkdir readlink rm setsid sleep tail
 
 The `yq` dependency can be removed. See [below](#run-without-the-yq-dependency).
 
@@ -37,7 +61,7 @@ Commands:
   restart <job>    Restart job.
   status           Show process states.
   fix              Fix unclean shutdown.
-  log              Show continuously the supervisor.sh log.
+  log              Show continuously the supervisor.sh log (only for daemon mode)
   logs             Show continuously the supervisor.sh log + job logs.
   convert          Convert the YAML configuration file to Bash. This allows the
                    usage without the 'yq' dependency.
@@ -52,22 +76,23 @@ By default, the configuration is read from `/etc/supervisor.yaml`. You can speci
 ### supervisor
 
 Key                    | Required | Default       | Possible Values | Description
------------------------|----------|---------------|-----------------|--------------------------------------------------------------------------------------------
-`logfile`              | No       | `/dev/stdout` | Valid file path | Log file for output (only for daemon mode)
-`sigterm_grace_period` | No       | `2`           | Any number      | Grace period in seconds until SIGKILL is send to processes that keeps running after SIGTERM
-`keep_running`         | No       | `off`         | `on`, `off`     | Exit supervisor when all jobs are stopped (`off`) or keep running (`on`)
-`color`                | No       |               | e.g. `\e[0;34m` | Sets the text color using an escape sequence for terminal colors. This only applies if running in the foreground.
+-----------------------|----------|---------------|-----------------|---------------------------------------------------------------------------------------------
+`logfile`              | No       | `/dev/stdout` | Valid file path | Log file for supervisor output (only for daemon mode)
+`sigterm_grace_period` | No       | `2`           | Any number      | Grace period in seconds until SIGKILL is send to processes that keeps running after SIGTERM.
+`keep_running`         | No       | `off`         | `on`, `off`     | Exit supervisor when all jobs are stopped (`off`) or keep running (`on`).
+`color`                | No       |               | e.g. `\e[0;34m` | Sets the text color using an escape sequence for terminal colors (only for forground mode).
 
 ### jobs
 
-Key         | Required | Default       | Possible Values      | Description
-------------|----------|---------------|----------------------|---------------------------------------------------------------------------------
-`name`      | Yes      |               | Any string           | Job name
-`command`   | Yes      |               | Any string           | Job command
-`autostart` | No       | `on`          | `on`, `off`          | Start job automatically (`on`) or not (`off`)
-`restart`   | No       | `error`       | `error`, `on`, `off` | Restart a job if it exits, only on failure (`error`) or always (`on`) or never (`off`)
-`required`  | No       | `no`          | `no`, `yes`          | When a required job stops, all remaining jobs and the supervisor are stopped as well.
-`logfile`   | No       | `/dev/stdout` | Valid file path      | Log file for output
+Key             | Required | Default       | Possible Values      | Description
+----------------|----------|---------------|----------------------|------------------------------------------------------------------------------------------
+`name`          | Yes      |               | Any string           | Job name
+`command`       | Yes      |               | Any string           | Job command
+`autostart`     | No       | `on`          | `on`, `off`          | Start the job automatically (`on`) or not (`off`).
+`restart`       | No       | `error`       | `error`, `on`, `off` | Restart the job if it exits, only on failure (`error`) or always (`on`) or never (`off`).
+`restart_limit` | No       | `3`           | Any positive integer | Restart the job only n times. Set 0 for unlimited restarts.
+`required`      | No       | `no`          | `no`, `yes`          | When a required job stops, all remaining jobs and the supervisor are stopped as well.
+`logfile`       | No       | `/dev/stdout` | Valid file path      | Write output to log file.
 
 ## Example
 
@@ -106,7 +131,7 @@ jobs:
 
 ## Run without the 'yq' dependency
 
-If you want to remove the `yq` dependency, you can convert the YAML configuration to Bash. However, this conversion must be done in an environment where `yq` is available.
+If you want to remove the `yq` dependency, you can convert the YAML configuration to Bash. This conversion must be done in an environment where `yq` is available.
 
 ```bash
 supervisor.sh -c /etc/supervisor.yaml convert
