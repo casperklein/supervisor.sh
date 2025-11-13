@@ -163,5 +163,5 @@ docker run --rm -v "${PWD}":/workdir -u root --entrypoint /bin/sh mikefarah/yq -
 
 ## Used by these projects
 
-- [Pi-hole for Home Assistant](https://github.com/casperklein/homeassistant-addons/tree/master/pi-hole)
+- [Pi-hole for Home Assistant](https://github.com/casperklein/homeassistant-addons/blob/master/pi-hole/README.md)
 - [docker-smokeping](https://github.com/casperklein/docker-smokeping)
