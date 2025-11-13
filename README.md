@@ -23,10 +23,6 @@ Without the explicit `start` command, `supervisor.sh` runs in the foreground. It
 
 To run the supervisor in daemon mode, use `supervisor.sh start`.
 
-### Bash completion
-
-todo
-
 ## Dependencies
 
 - Bash >= 5.1
@@ -128,6 +124,12 @@ jobs:
     restart: "off"
     required: "yes"
 ```
+
+## Bash completion
+
+If you have [`bash-completion`](https://github.com/scop/bash-completion) installed, simply copy `supervisor-completion.bash` to `/etc/bash_completion.d/`.
+
+Otherwise, you can source `supervisor-completion.bash` in your `.bashrc`.
 
 ## Run without the 'yq' dependency
 
