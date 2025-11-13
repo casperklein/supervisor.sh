@@ -160,3 +160,8 @@ supervisor.sh -c /etc/supervisor.yaml.sh <command>
 ```bash
 docker run --rm -v "${PWD}":/workdir -u root --entrypoint /bin/sh mikefarah/yq -c "apk add bash; bash -c './supervisor.sh -c supervisor.yaml convert'"
 ```
+
+## Used by these projects
+
+- [Pi-hole for Home Assistant](https://github.com/casperklein/homeassistant-addons/tree/master/pi-hole)
+- [docker-smokeping](https://github.com/casperklein/docker-smokeping)
