@@ -31,6 +31,19 @@ To run the supervisor in daemon mode, use `supervisor.sh start`.
 
 The `yq` dependency can be removed. See [below](#run-without-the-yq-dependency).
 
+## Installation
+
+```bash
+SV_VERSION=latest
+
+# Supervisor
+curl -sSLf -o /usr/bin/supervisor.sh "https://raw.githubusercontent.com/casperklein/supervisor.sh/refs/tags/$SV_VERSION/supervisor.sh"
+chmod +x /usr/bin/supervisor.sh
+
+# Bash completion (optional)
+curl -sSLf -o /etc/bash_completion.d/supervisor.sh "https://raw.githubusercontent.com/casperklein/supervisor.sh/refs/tags/$SV_VERSION/supervisor-completion.bash"
+```
+
 ## Usage
 
 ```text
