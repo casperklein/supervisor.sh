@@ -161,7 +161,7 @@ _is_app_running() {
 
 _exit_if_app_is_not_running() {
 	if ! _is_app_running; then
-		echo "Error: $APP is not running"
+		echo "Error: $APP is not running."
 		echo
 		exit 1
 	fi >&2
@@ -169,7 +169,7 @@ _exit_if_app_is_not_running() {
 
 _exit_if_app_is_already_running() {
 	if _is_app_running; then
-		echo "Error: $APP is already running"
+		echo "Error: $APP is already running."
 		echo
 		exit 1
 	fi >&2
@@ -221,7 +221,7 @@ _fix_unclean_shutdown() {
 				name=${name:0:-4}
 				pid=$(<"$i")
 				if kill -0 -"$pid" 2>/dev/null; then
-					_status "Sending $signal to $name ($pid)"
+					_status "Sending $signal: $name ($pid)"
 					kill -"$signal" -"$pid" 2>/dev/null || true
 					if [ "$signal" == "SIGTERM" ]; then
 						wait_grace_period=1
@@ -442,7 +442,7 @@ _start_job_cli() {
 			# Set marker
 			_set_job_state "start" "$PID_DIR/$name"
 
-			_status "Starting '$name'"
+			_status "Starting: $name"
 
 			# Send USR1 signal to supervisor to trigger the job start
 			# start_job_trap() will then start the job
@@ -453,15 +453,15 @@ _start_job_cli() {
 				sleep 0.2
 			done
 
-			_status "'$name' started ($(<"$PID_DIR/$name.pid"))"
+			_status "Job started: $name ($(<"$PID_DIR/$name.pid"))"
 			return 0
 		else
-			echo "Error: '$name' is already running" >&2
+			echo "Error: $name is already running." >&2
 			echo >&2
 			return 1
 		fi
 	else
-		echo "Error: Job '$name' not found" >&2
+		echo "Error: Job '$name' not found." >&2
 		echo >&2
 		return 1
 	fi
@@ -477,7 +477,7 @@ _stop_job_cli() {
 			_set_job_state "stop" "$PID_DIR/$name"
 
 			# Send SIGTERM to job process group
-			_status "Stopping $name ($job_pid)"
+			_status "Stopping: $name ($job_pid)"
 			kill -SIGTERM -"$job_pid" 2>/dev/null || true
 
 			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD}s before sending SIGKILL."
@@ -485,14 +485,14 @@ _stop_job_cli() {
 			# Wait until stopped
 			while kill -0 -"$job_pid" 2>/dev/null; do
 				if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
-					_status "Process still running, sending SIGKILL: $name ($job_pid)"
+					_status "Job still running, sending SIGKILL: $name ($job_pid)"
 					kill -SIGKILL -"$job_pid" 2>/dev/null || true
 				fi
 				sleep 0.2
 			done
 
 			if ! _is_app_running; then
-				_status "$name most likely stopped ($job_pid)"
+				_status "Job most likely stopped: $name ($job_pid)"
 				_exit_if_app_is_not_running
 			fi
 
@@ -501,15 +501,15 @@ _stop_job_cli() {
 			# when the .pid file has been removed (supervisor has stopped, e.g. when no more jobs are running).
 			until [[ -f "$PID_DIR/$name.pid.stopped" || ! -f "$PID_DIR/$name.pid" ]]; do sleep 0.2; done
 
-			_status "$name stopped ($job_pid)"
+			_status "Job stopped: $name ($job_pid)"
 			return 0
 		else
-			echo "Error: $name is not running" >&2
+			echo "Error: $name is not running." >&2
 			echo >&2
 			exit 1
 		fi
 	else
-		echo "Error: Job '$name' not found" >&2
+		echo "Error: Job '$name' not found." >&2
 		echo >&2
 		exit 1
 	fi
@@ -655,7 +655,7 @@ case "${1:-}" in
 
 	convert)
 		if (( CONFIG_FILE_BASH == 1 )); then
-			echo "Error: Configuration file '$CONFIG_FILE' is already converted to Bash"
+			echo "Error: Configuration file '$CONFIG_FILE' is already converted to Bash."
 			echo
 			exit 1
 		fi >&2
@@ -763,35 +763,35 @@ _clean_up() {
 		done
 		if [ -n "${wait_jobs:-}" ]; then
 			seconds_until_sigkill=$(( SIGTERM_GRACE_PERIOD + grace_period_start - SECONDS ))
-			(( seconds_until_sigkill > 0 )) && _status "Waiting ${seconds_until_sigkill} seconds for process termination: ${wait_jobs:0:-2}"
+			(( seconds_until_sigkill > 0 )) && _status "Waiting ${seconds_until_sigkill} seconds for job termination: ${wait_jobs:0:-2}"
 		fi
 		return 0
 	}
 	__wait_info
 
-	# Wait until all processes are terminated
+	# Wait until all jobs are stopped
 	while :; do
 		for i in "${!PIDS[@]}"; do
 			if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stopped" ]; then
 				if ! kill -0 -"${PIDS[i]}" 2>/dev/null; then
-					_status "Process terminated: ${JOB_NAME[i]} (${PIDS[i]})"
+					_status "Job terminated: ${JOB_NAME[i]} (${PIDS[i]})"
 					unset "PIDS[$i]"
 					_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
 				else
 					if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
-						_status "Process still running, sending SIGKILL: ${JOB_NAME[i]} (${PIDS[i]})"
+						_status "Job still running, sending SIGKILL: ${JOB_NAME[i]} (${PIDS[i]})"
 						kill -SIGKILL -"${PIDS[i]}" 2>/dev/null || true
 					fi
 				fi
 			fi
 		done
 
-		# Are all processes terminated?
+		# Are all jobs stopped?
 		if (( ${#PIDS[@]} == 0 )); then
 			break
 		fi
 
-		# Show remaining running processes every 5 seconds
+		# Show remaining running jobs every 5 seconds
 		if (( SECONDS - last_wait_info > 4 )); then
 			last_wait_info=$SECONDS
 			__wait_info
@@ -847,7 +847,7 @@ _start_job() {
 
 	_set_job_state "started" "$PID_DIR/${JOB_NAME[i]}"
 
-	_status "Process started: ${JOB_NAME[i]} (${PIDS[i]})"
+	_status "Job started: ${JOB_NAME[i]} (${PIDS[i]})"
 }
 
 # Start jobs
@@ -892,19 +892,19 @@ _kill_process_group() {
 
 	if kill -0 -"${PIDS[i]}" 2>/dev/null; then
 		kill -SIGTERM -"${PIDS[i]}" 2>/dev/null
-		_status "Waiting for ${JOB_NAME[i]} child processes to terminate."
+		_status "Waiting for child processes to terminate: ${JOB_NAME[i]} (${PIDS[i]})"
 
 		while kill -0 -"${PIDS[i]}" 2>/dev/null; do
 			if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
-				# Kill possible orphaned zombie processes
+				# Kill possible orphaned processes
 				if kill -SIGKILL -"${PIDS[i]}" 2>/dev/null; then
-					_status "${JOB_NAME[i]} child processes are still running, sending SIGKILL (${PIDS[i]})"
+					_status "Child processes are still running, sending SIGKILL: ${JOB_NAME[i]} (${PIDS[i]})"
 				fi
 			fi
 			sleep 0.2
 		done
 
-		_status "${JOB_NAME[i]} child processes terminated."
+		_status "Child processes terminated: ${JOB_NAME[i]} (${PIDS[i]})"
 	fi
 }
 
@@ -915,7 +915,7 @@ _exit_app_if_job_is_required() {
 		# Keep running, if the job was stopped on purpose (via the 'stop' command)
 		if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
 			_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
-			_status "Required job '${JOB_NAME[i]}' stopped. Shutting down.."
+			_status "Required job stopped: ${JOB_NAME[i]}"
 			_stop_app
 		fi
 	fi
@@ -924,7 +924,7 @@ _exit_app_if_job_is_required() {
 _clean_up_job() {
 	local i=$1
 
-	# Kill possible orphaned zombie processes
+	# Kill possible orphaned processes
 	_kill_process_group "$i"
 
 	unset "PIDS[$i]"
@@ -942,7 +942,7 @@ while :; do
 		if (( ${#PIDS[@]} == 0 )); then
 			# Only supervisor is running
 			if [ "$KEEP_RUNNING" == "off" ]; then
-				_status "No more processes are running. Stopping $APP"
+				_status "No more jobs are running. Stopping $APP"
 				exit 0
 			else
 				sleep 1
@@ -959,13 +959,13 @@ while :; do
 	for i in "${!PIDS[@]}"; do
 		if [ "${PIDS[i]}" == "$JOB_PID" ]; then
 			if [ -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
-				_status "Process termination is expected: ${JOB_NAME[i]} (${PIDS[i]})"
+				_status "Job termination is expected: ${JOB_NAME[i]} (${PIDS[i]})"
 			fi
 
 			if [[ $JOB_STATUS -gt 0 && ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
-				_status "Process failed [$JOB_STATUS]: ${JOB_NAME[i]} (${PIDS[i]})"
+				_status "Job failed [$JOB_STATUS]: ${JOB_NAME[i]} (${PIDS[i]})"
 			else
-				_status "Process terminated: ${JOB_NAME[i]} (${PIDS[i]})"
+				_status "Job terminated: ${JOB_NAME[i]} (${PIDS[i]})"
 			fi
 
 			_clean_up_job "$i"
