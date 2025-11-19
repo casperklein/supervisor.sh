@@ -5,5 +5,6 @@ trap 'echo "Child: SIGTERM received."' SIGTERM
 
 # Keep alive
 while :; do
-	sleep 1
+	# Run sleep in own process group to avoid "Terminated" message (supervisor does only send SIGTERM to job process group)
+	setsid sleep 1
 done

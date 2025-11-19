@@ -1,5 +1,5 @@
 supervisor:
-  sigterm_grace_period: 2
+  sigterm_grace_period: 7
   color: "\e[0;34m" # blue text color
   logfile: "/tmp/supervisor-test.log"
 

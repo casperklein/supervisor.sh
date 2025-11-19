@@ -1,16 +1,17 @@
 #!/bin/bash
 
+# Terminate gracefully
 _sigterm() {
 	echo "Parent: SIGTERM received. Terminating.."
 	exit
 }
-
 trap _sigterm SIGTERM
 
-# start bad child
+# Start bad child
 child.sh &
 
 # Keep alive
 while :; do
-	sleep 1
+	# Run sleep in own process group to avoid "Terminated" message (supervisor does only send SIGTERM to job process group)
+	setsid sleep 1
 done
