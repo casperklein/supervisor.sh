@@ -428,6 +428,8 @@ _show_process_states() {
 }
 
 _start_job_cli() {
+	_exit_if_app_is_not_running
+
 	local name=$1
 
 	if [ -f "$PID_DIR/$name.pid" ]; then
@@ -468,6 +470,8 @@ _start_job_cli() {
 }
 
 _stop_job_cli() {
+	_exit_if_app_is_not_running
+
 	local name=$1 job_pid
 	local grace_period_start=$SECONDS
 
@@ -492,8 +496,9 @@ _stop_job_cli() {
 			done
 
 			if ! _is_app_running; then
-				_status "Job most likely stopped: $name ($job_pid)"
-				_exit_if_app_is_not_running
+				_status "$APP stopped."
+				_status "Job was most likely stopped: $name ($job_pid)"
+				exit 0
 			fi
 
 			# Wait until the job is stopped.
@@ -526,7 +531,6 @@ _set_job_state() {
 		stop)
 			# Let supervisor know, that the job is stopped on purpose.
 			# This is important
-			# - if the last running job is stopped and supervisor is configured with 'keep_running: off'
 			# - if a job is stopped and configured with 'required: yes'
 			# - if a job is stopped and configured with 'restart: on'
 			# The marker below ensures that supervisor takes no action in these cases.
@@ -613,7 +617,6 @@ case "${1:-}" in
 			# Start daemon if not running
 			_exit_if_unclean_shutdown
 		else
-			_exit_if_app_is_not_running
 			# Start job if not running
 			_start_job_cli "$2"
 			exit 0
@@ -633,10 +636,10 @@ case "${1:-}" in
 		;;
 
 	restart)
-		_exit_if_app_is_not_running
-
 		# Restart supervisor or job?
 		if [ -z "${2:-}" ]; then
+			_exit_if_app_is_not_running
+
 			# Check if supervisor runs as daemon (required for restart)
 			mapfile -t -d $'\0' SV_ARGS < "/proc/$(<"$PID_FILE")/cmdline"
 			if [ "${SV_ARGS[-1]}" != "--daemon" ]; then
