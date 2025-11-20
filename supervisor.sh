@@ -11,7 +11,8 @@
 # Source: https://github.com/casperklein/supervisor.sh/
 
 # Shell options
-set -ueo pipefail        # Exit on errors and unset variables
+set   -o errexit         # Exit immediately if a command exits with a non-zero status
+set   -o nounset         # Treat unset variables as an error when substituting
 shopt -s inherit_errexit # Exit on errors - also in sub-shells
 shopt -s nullglob        # Return nothing if '*' does not expand
 
