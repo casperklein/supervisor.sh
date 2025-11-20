@@ -210,7 +210,7 @@ _fix_unclean_shutdown() {
 	if _check_clean_shutdown; then
 		echo "Everything is fine, no action required."
 		echo
-		exit
+		exit 0
 	fi
 
 	# Send SIGTERM to running jobs, later SIGKILL if necessary
@@ -257,7 +257,7 @@ _stop_app() {
 			_status "Stopping $APP ($app_pid)"
 		fi
 		# Trigger _clean_up()
-		exit
+		exit 0
 	fi
 
 	_status "Stopping $APP ($app_pid)"
@@ -573,7 +573,7 @@ while [[ "${1:-}" == -* ]]; do
 		-v|--version)
 			echo "$APP $VER"
 			echo
-			exit
+			exit 0
 			;;
 
 		--)
@@ -616,7 +616,7 @@ case "${1:-}" in
 			_exit_if_app_is_not_running
 			# Start job if not running
 			_start_job_cli "$2"
-			exit
+			exit 0
 		fi
 		;;
 
@@ -628,7 +628,7 @@ case "${1:-}" in
 		else
 			# Stop job if running
 			_stop_job_cli "$2"
-			exit
+			exit 0
 		fi
 		;;
 
@@ -649,7 +649,7 @@ case "${1:-}" in
 		else
 			_stop_job_cli "$2"
 			_start_job_cli "$2"
-			exit
+			exit 0
 		fi
 		;;
 
@@ -678,7 +678,7 @@ case "${1:-}" in
 		)
 		# Declare variables as global and write config file
 		echo "${VARS//declare/declare -g}" > "$CONFIG_FILE".sh
-		exit
+		exit 0
 		;;
 
 	log)
