@@ -736,6 +736,13 @@ case "${1:-}" in
 		;;
 esac
 
+# Bash version >= 5.1 ?
+if ! (( BASH_VERSINFO[0] > 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 1) )); then
+	echo "Error: Bash 5.1 or later is required to run $APP"
+	echo
+	exit 1
+fi >&2
+
 # Begin server only part
 
 # Check for required keys in jobs configuration
