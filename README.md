@@ -87,7 +87,7 @@ By default, the configuration is read from `/etc/supervisor.yaml`. You can speci
 Key                    | Required | Default       | Possible Values | Description
 -----------------------|----------|---------------|-----------------|---------------------------------------------------------------------------------------------
 `logfile`              | No       | `/dev/stdout` | Valid file path | Log file for supervisor output (only for daemon mode)
-`sigterm_grace_period` | No       | `2`           | Any number      | Grace period in seconds until SIGKILL is send to processes that keeps running after SIGTERM.
+`sigterm_grace_period` | No       | `10`          | Any number      | Grace period in seconds until SIGKILL is send to processes that keeps running after SIGTERM.
 `keep_running`         | No       | `off`         | `on`, `off`     | Exit supervisor when all jobs are stopped (`off`) or keep running (`on`).
 `color`                | No       |               | e.g. `\e[0;34m` | Sets the text color using an escape sequence for terminal colors (only for forground mode).
 
@@ -108,34 +108,32 @@ Key             | Required | Default       | Possible Values      | Description
 ```yaml
 supervisor:
   logfile: "/var/log/supervisor.log"
-  sigterm_grace_period: 2
+  sigterm_grace_period: 10
   keep_running: "off"
   color: "\e[0;34m" # blue text color
 
 jobs:
-  - name: "job1"
-    command: "echo 'I will fail soon. But supervisor will restart me'; sleep 10; exit 1"
+  - name: "job1-restart"
+    command: "echo 'Job 1: I will fail in 4 seconds. But supervisor will restart me 3 times.'; sleep 4; exit 1"
     autostart: "on"
     restart: "error"
-    logfile: "/var/log/job1.log"
 
-  - name: "job2"
-    command: "echo 'No restart for me on failure'; sleep 3; exit 1"
+  - name: "job2-no-restart"
+    command: "echo 'Job 2: No restart for me on failure in 3 seconds.'; sleep 3; exit 1"
     restart: "off"
-    logfile: /var/log/job2.log
 
-  - name: "job3"
-    command: "echo 'This output goes to the supervisor log file'"
-
-  - name: "job4"
-    command: "echo 'I was started manually'"
+  - name: "job3-no-autostart"
+    command: "echo 'Job 3: I was started manually'"
     autostart: "off"
     logfile: "/var/log/job4.log"
 
-  - name: "job5"
-    command: "echo 'I am required. If I stop, supervisor will stop too.'; sleep 20"
+  - name: "job4-required"
+    command: "echo 'Job 4: I am required. When I stop in 20 seconds, supervisor will stop too.'; sleep 20"
     restart: "off"
     required: "yes"
+
+  - name: "job5-ignore-SIGTERM"
+    command: "trap true SIGTERM; echo 'Job 5: I will ignore SIGTERM.'; while :; do sleep 1d; done"
 ```
 
 ## Bash completion

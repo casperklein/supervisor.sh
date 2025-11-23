@@ -1,30 +1,28 @@
 supervisor:
   logfile: "/var/log/supervisor.log"
-  sigterm_grace_period: 2
+  sigterm_grace_period: 10
   keep_running: "off"
   color: "\e[0;34m" # blue text color
 
 jobs:
-  - name: "job1"
-    command: "echo 'I will fail soon. But supervisor will restart me'; sleep 10; exit 1"
+  - name: "job1-restart"
+    command: "echo 'Job 1: I will fail in 4 seconds. But supervisor will restart me 3 times.'; sleep 4; exit 1"
     autostart: "on"
     restart: "error"
-    logfile: "/var/log/job1.log"
 
-  - name: "job2"
-    command: "echo 'No restart for me on failure'; sleep 3; exit 1"
+  - name: "job2-no-restart"
+    command: "echo 'Job 2: No restart for me on failure in 3 seconds.'; sleep 3; exit 1"
     restart: "off"
-    logfile: /var/log/job2.log
 
-  - name: "job3"
-    command: "echo 'This output goes to the supervisor log file'"
-
-  - name: "job4"
-    command: "echo 'I was started manually'"
+  - name: "job3-no-autostart"
+    command: "echo 'Job 3: I was started manually'"
     autostart: "off"
     logfile: "/var/log/job4.log"
 
-  - name: "job5"
-    command: "echo 'I am required. If I stop, supervisor will stop too.'; sleep 20"
+  - name: "job4-required"
+    command: "echo 'Job 4: I am required. When I stop in 20 seconds, supervisor will stop too.'; sleep 20"
     restart: "off"
     required: "yes"
+
+  - name: "job5-ignore-SIGTERM"
+    command: "trap true SIGTERM; echo 'Job 5: I will ignore SIGTERM.'; while :; do sleep 1d; done"

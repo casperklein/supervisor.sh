@@ -126,7 +126,7 @@ _read_config_file() {
 
 	# supervisor config                       Key                  Default value instead of 'null'
 	LOG_FILE=$(            yq -r '.supervisor.logfile              // "/dev/stdout"' "$CONFIG_FILE")
-	SIGTERM_GRACE_PERIOD=$(yq -r '.supervisor.sigterm_grace_period // "2"'           "$CONFIG_FILE")
+	SIGTERM_GRACE_PERIOD=$(yq -r '.supervisor.sigterm_grace_period // "10"'          "$CONFIG_FILE")
 	KEEP_RUNNING=$(        yq -r '.supervisor.keep_running         // "off"'         "$CONFIG_FILE")
 	COLOR=$(               yq -r '.supervisor.color                // ""'            "$CONFIG_FILE")
 
