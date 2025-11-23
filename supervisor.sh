@@ -612,7 +612,6 @@ if ! [[ "${1:-}" == "status" || "${1:-}" == "start" && -n "${2:-}" ||"${1:-}" ==
 fi
 (( NO_COLOR == 1 )) && COLOR="" # CLI option > config file
 
-cd /
 mkdir -p "$PID_DIR"
 
 # Get command
@@ -767,6 +766,7 @@ done
 if [ "$1" != "--daemon" ]; then
 	_exit_if_app_is_already_running
 	_status "Starting $APP"
+	cd /
 	setsid bash "$APP_PATH" --config "$CONFIG_FILE" "--daemon" &
 	echo $! >"$PID_FILE"
 	_status "$APP $VER started ($!)"
