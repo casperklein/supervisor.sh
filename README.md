@@ -98,10 +98,10 @@ Key             | Required | Default       | Possible Values      | Description
 `name`          | Yes      |               | Any string           | Job name
 `command`       | Yes      |               | Any string           | Job command
 `autostart`     | No       | `on`          | `on`, `off`          | Start the job automatically (`on`) or not (`off`).
+`logfile`       | No       | `/dev/stdout` | Valid file path      | Write output to log file.
 `restart`       | No       | `error`       | `error`, `on`, `off` | Restart the job if it exits, only on failure (`error`) or always (`on`) or never (`off`).
 `restart_limit` | No       | `3`           | Any positive integer | Restart the job only n times. Set 0 for unlimited restarts.
 `required`      | No       | `no`          | `no`, `yes`          | When a required job stops, all remaining jobs and the supervisor are stopped as well.
-`logfile`       | No       | `/dev/stdout` | Valid file path      | Write output to log file.
 
 ## Example
 

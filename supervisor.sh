@@ -124,20 +124,20 @@ _read_config_file() {
 	# mapfile -t --> Remove a trailing DELIM from each line read (default newline)
 	# yq -r      --> unwrap scalar, print the value with no quotes, colors or comments
 
-	# supervisor config
-	LOG_FILE=$(            yq -r '.supervisor.logfile // "/dev/stdout"'    "$CONFIG_FILE")
-	SIGTERM_GRACE_PERIOD=$(yq -r '.supervisor.sigterm_grace_period // "2"' "$CONFIG_FILE")
-	KEEP_RUNNING=$(        yq -r '.supervisor.keep_running // "off"'       "$CONFIG_FILE")
-	COLOR=$(               yq -r '.supervisor.color // ""'                 "$CONFIG_FILE")
+	# supervisor config                       Key                  Default value instead of 'null'
+	LOG_FILE=$(            yq -r '.supervisor.logfile              // "/dev/stdout"' "$CONFIG_FILE")
+	SIGTERM_GRACE_PERIOD=$(yq -r '.supervisor.sigterm_grace_period // "2"'           "$CONFIG_FILE")
+	KEEP_RUNNING=$(        yq -r '.supervisor.keep_running         // "off"'         "$CONFIG_FILE")
+	COLOR=$(               yq -r '.supervisor.color                // ""'            "$CONFIG_FILE")
 
-	# Job config
-	mapfile -t JOB_NAME          < <(yq -r '.jobs[].name      // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
-	mapfile -t JOB_COMMAND       < <(yq -r '.jobs[].command   // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
-	mapfile -t JOB_RESTART       < <(yq -r '.jobs[].restart   // "error"'       "$CONFIG_FILE") # Default value is         'error', instead of 'null'
-	mapfile -t JOB_REQUIRED      < <(yq -r '.jobs[].required  // "no"'          "$CONFIG_FILE") # Default value is            'no', instead of 'null'
-	mapfile -t JOB_LOGFILE       < <(yq -r '.jobs[].logfile   // "/dev/stdout"' "$CONFIG_FILE") # Default value is   '/dev/stdout', instead of 'null'
-	mapfile -t JOB_AUTOSTART     < <(yq -r '.jobs[].autostart // "on"'          "$CONFIG_FILE") # Default value is            'on', instead of 'null'
-	mapfile -t JOB_RESTART_LIMIT < <(yq -r '.jobs[].restart_limit // "3"'       "$CONFIG_FILE") # Default value is             '3', instead of 'null'
+	# Job config                                    Key            Default value instead of 'null'
+	mapfile -t JOB_NAME          < <(yq -r '.jobs[].name           // ""'            "$CONFIG_FILE")
+	mapfile -t JOB_COMMAND       < <(yq -r '.jobs[].command        // ""'            "$CONFIG_FILE")
+	mapfile -t JOB_AUTOSTART     < <(yq -r '.jobs[].autostart      // "on"'          "$CONFIG_FILE")
+	mapfile -t JOB_LOGFILE       < <(yq -r '.jobs[].logfile        // "/dev/stdout"' "$CONFIG_FILE")
+	mapfile -t JOB_REQUIRED      < <(yq -r '.jobs[].required       // "no"'          "$CONFIG_FILE")
+	mapfile -t JOB_RESTART       < <(yq -r '.jobs[].restart        // "error"'       "$CONFIG_FILE")
+	mapfile -t JOB_RESTART_LIMIT < <(yq -r '.jobs[].restart_limit  // "3"'           "$CONFIG_FILE")
 	declare -A JOB_RESTART_COUNT
 }
 
