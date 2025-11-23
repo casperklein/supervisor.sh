@@ -268,7 +268,16 @@ _stop_app() {
 	local i job_pids
 	for i in "$PID_DIR"/*.pid; do
 		if [ ! -f "$i.stopped" ]; then
-			job_pids+=(-"$(<"$i")")
+			if [ "$i" == "$PID_DIR/$APP.pid" ]; then
+				# supervisor (might run as PID 1)
+				# A PID of -1 is special; it indicates all processes except the kill process itself.
+				# There is no need to send SIGTERM to the whole supervisor process group.
+				job_pids+=("$(<"$i")")
+			else
+				# Job process group
+				job_pids+=(-"$(<"$i")")
+			fi
+
 			# Announce that job termination is in progress
 			: >"$i.stop"
 		fi
