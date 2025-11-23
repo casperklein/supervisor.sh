@@ -747,13 +747,13 @@ for i in "${!JOB_NAME[@]}"; do
 	fi >&2
 done
 
-# Start daemon if not running
+# Run as daemon
 if [ "$1" != "--daemon" ]; then
 	_exit_if_app_is_already_running
 	_status "Starting $APP"
 	setsid bash "$APP_PATH" --config "$CONFIG_FILE" "--daemon" &
 	echo $! >"$PID_FILE"
-	_status "$APP started ($!)"
+	_status "$APP $VER started ($!)"
 	exit 0
 fi
 
@@ -830,7 +830,7 @@ else
 	echo "$$" >"$PID_FILE"
 fi
 
-_status "$APP started ($$)"
+_status "$APP $VER started ($$)"
 
 _start_job() {
 	local i=$1
