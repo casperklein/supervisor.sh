@@ -676,17 +676,18 @@ case "${1:-}" in
 		echo
 
 		# Get the attributes and value of each variable
-		VARS=$(declare -p                         \
-			LOG_FILE                         \
-			SIGTERM_GRACE_PERIOD             \
-			KEEP_RUNNING                     \
-			COLOR                            \
-			JOB_NAME                         \
-			JOB_COMMAND                      \
-			JOB_RESTART                      \
-			JOB_REQUIRED                     \
-			JOB_LOGFILE                      \
-			JOB_AUTOSTART
+		VARS=$(declare -p            \
+			LOG_FILE             \
+			SIGTERM_GRACE_PERIOD \
+			KEEP_RUNNING         \
+			COLOR                \
+			JOB_NAME             \
+			JOB_COMMAND          \
+			JOB_AUTOSTART        \
+			JOB_LOGFILE          \
+			JOB_REQUIRED         \
+			JOB_RESTART          \
+			JOB_RESTART_LIMIT
 		)
 		# Declare variables as global and write config file
 		echo "${VARS//declare/declare -g}" > "$CONFIG_FILE".sh
