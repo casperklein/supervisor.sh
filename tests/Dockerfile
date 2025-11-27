@@ -3,7 +3,13 @@ FROM debian:13-slim
 ARG YQ_VERSION=v4.49.1
 ARG TARGETARCH
 
-RUN apt update && apt install -y curl dumb-init procps
+SHELL ["/bin/bash", "-e", "-c"]
+
+RUN <<EOF
+	apt update
+	apt install -y curl dumb-init procps
+	rm -rf /var/lib/apt/lists/*
+EOF
 
 # Install yq
 RUN <<EOF
