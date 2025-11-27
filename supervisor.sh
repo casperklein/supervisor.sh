@@ -689,7 +689,7 @@ case "${1:-}" in
 			JOB_RESTART_LIMIT
 		)
 		# Declare variables as global and write config file
-		echo "${VARS//declare/declare -g}" > "$CONFIG_FILE".sh
+		echo "${VARS//declare/& -g}" > "$CONFIG_FILE".sh
 		exit 0
 		;;
 
