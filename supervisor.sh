@@ -5,8 +5,7 @@
 # Dependencies: yq, bash >= 5.1
 # Bash 5.1 or later is required to support 'wait -p'
 
-# Also these common core utilities are used:
-# cat mkdir readlink rm setsid sleep tail
+# Also these common core utilities are required: cat mkdir readlink rm setsid sleep tail
 
 # Source: https://github.com/casperklein/supervisor.sh/
 
