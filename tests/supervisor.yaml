@@ -13,4 +13,8 @@ jobs:
     required: "yes"
 
   - name: "test"
-    command: "supervisor.sh -c /scripts/supervisor.yaml stop test > /dev/null"
+    command: "supervisor.sh -c supervisor.yaml stop test > /dev/null"
+    restart: "off"
+
+  - name: "sleep"
+    command: "sleep 1d"

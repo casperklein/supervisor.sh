@@ -9,6 +9,13 @@ CONFIG_FILE="../supervisor.yaml"
 
 cd "$(dirname "$0")"
 
+# Check if 'yq' binary is available
+if ! hash yq 2>/dev/null; then
+	echo "Error: 'yq' binary is not available. Get it from: https://github.com/mikefarah/yq"
+	echo
+	exit 1
+fi >&2
+
 # supervisor config
 LOG_FILE=$(            yq -r '.supervisor.logfile // "/dev/stdout"'    "$CONFIG_FILE")
 SIGTERM_GRACE_PERIOD=$(yq -r '.supervisor.sigterm_grace_period // "2"' "$CONFIG_FILE")
@@ -23,6 +30,15 @@ mapfile -t JOB_REQUIRED  < <(yq -r '.jobs[].required  // "no"'          "$CONFIG
 mapfile -t JOB_LOGFILE   < <(yq -r '.jobs[].logfile   // "/dev/stdout"' "$CONFIG_FILE") # Default value is   '/dev/stdout', instead of 'null'
 mapfile -t JOB_AUTOSTART < <(yq -r '.jobs[].autostart // "on"'          "$CONFIG_FILE") # Default value is            'on', instead of 'null'
 
+__explain() {
+	echo "There are at least two, that have the same name:"
+	echo
+	echo "$APP depends on 'yq' from: https://github.com/mikefarah/yq"
+	echo "The Debian repository, for example, provides 'yq' from: https://github.com/kislyuk/yq"
+	echo
+}
+
+# Check if 'yq' behaves the way it should
 _show_error_and_exit() {
 	if [ "$1" == "ARRAY" ]; then
 		echo "Internal error: Wrong element count for array $2"
@@ -32,11 +48,7 @@ _show_error_and_exit() {
 	echo
 	echo "The cause for that is most likely the usage of the wrong 'yq' program."
 	echo
-	echo "There are at least two, that have the same name:"
-	echo
-	echo "$APP depends on 'yq' from: https://github.com/mikefarah/yq"
-	echo "The Debian repository, for example, provides 'yq' from: https://github.com/kislyuk/yq"
-	echo
+	__explain
 	exit 1
 } >&2
 
@@ -51,6 +63,15 @@ count=${#JOB_NAME[@]}
 (( count !=  ${#JOB_REQUIRED[@]} ))  && _show_error_and_exit "ARRAY" "JOB_REQUIRED"
 (( count !=  ${#JOB_LOGFILE[@]} ))   && _show_error_and_exit "ARRAY" "JOB_LOGFILE"
 (( count !=  ${#JOB_AUTOSTART[@]} )) && _show_error_and_exit "ARRAY" "JOB_AUTOSTART"
+
+# Check if the correct 'yq' program is used
+if [[ "$(yq --version)" != "yq (https://github.com/mikefarah/yq/)"* ]]; then
+	echo "Error: Wrong 'yq' program detected."
+	echo
+	__explain
+	echo "debug $(yq --version)"
+	exit 1
+fi >&2
 
 echo "Parsing was successful. Everything seems fine :)"
 echo
