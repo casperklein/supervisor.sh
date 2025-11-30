@@ -765,10 +765,19 @@ done
 # Run as daemon
 if [ "$1" != "--daemon" ]; then
 	_exit_if_app_is_already_running
+
+	if ! { : >> "$LOG_FILE"; } 2>/dev/null; then
+		echo "Error: $APP log file '$LOG_FILE' is not writeable."
+		echo
+		exit 1
+	fi >&2
+
 	_status "Starting $APP"
+
 	cd /
 	setsid bash "$APP_PATH" --config "$CONFIG_FILE" "--daemon" &
 	echo $! >"$PID_FILE"
+
 	_status "$APP $VER started ($!)"
 	exit 0
 fi
