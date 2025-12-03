@@ -65,7 +65,7 @@ _usage() {
 		  stop  <job>      Stop job.
 		  restart          Restart daemon.
 		  restart <job>    Restart job.
-		  status           Show process states.
+		  status           Show process status table.
 		  fix              Fix unclean shutdown.
 		  log              Show continuously the $APP log.
 		  logs             Show continuously the $APP log + job logs.
@@ -191,7 +191,7 @@ _exit_if_unclean_shutdown() {
 	if ! _check_clean_shutdown; then
 		echo "Error: $APP was not stopped gracefully. See the process status table below."
 		echo
-		_show_process_states
+		_show_process_status_table
 		echo "Run '$APP fix' to stop any running jobs and clean up."
 		echo
 		exit 1
@@ -300,7 +300,7 @@ _stop_app() {
 	exit 0
 }
 
-_show_process_states() {
+_show_process_status_table() {
 	local i basename name=("Name") state=("State") pid=("PID")
 
 	# Get process states
@@ -621,7 +621,7 @@ fi >&2
 case "${1:-}" in
 	fix)    _fix_unclean_shutdown; exit ;;
 
-	status) _show_process_states; exit ;;
+	status) _show_process_status_table; exit ;;
 
 	start)
 		# Start daemon or job?
