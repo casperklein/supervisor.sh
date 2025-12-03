@@ -12,14 +12,16 @@ _supervisor_sh() {
 	elif [[ "$prev2" =~ ^(start|stop|restart)$ ]]; then
 		return 0
 	else
-		local i name jobs basename pid_dir="/var/run/supervisor.sh"
+		local app="supervisor.sh"
+		local pid_dir=${PID_DIR:-/run/$app}
+		local i basename name jobs
 
 		case "$prev" in
 			start)
 				for i in "$pid_dir"/*.pid; do
 					basename=${i##*/}
 					name="${basename:0:-4}"
-					if [[ "$name" != "*" && "$name" != "supervisor.sh" && -f "$i.stopped" ]]; then
+					if [[ "$name" != "*" && "$name" != "$app" && -f "$i.stopped" ]]; then
 						jobs+="$name "
 					fi
 				done
@@ -30,7 +32,7 @@ _supervisor_sh() {
 				for i in "$pid_dir"/*.pid; do
 					basename=${i##*/}
 					name="${basename:0:-4}"
-					if [[ "$name" != "*" && "$name" != "supervisor.sh" && ! -f "$i.stopped" ]]; then
+					if [[ "$name" != "*" && "$name" != "$app" && ! -f "$i.stopped" ]]; then
 						jobs+="$name "
 					fi
 				done

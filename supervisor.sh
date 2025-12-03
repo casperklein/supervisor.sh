@@ -20,7 +20,7 @@ APP="supervisor.sh"
 APP_PATH=$(readlink -f "$0")
 VER=0.11
 
-PID_DIR="/run/$APP"
+: "${PID_DIR:=/run/$APP}" # Allow override via ENV
 PID_FILE="$PID_DIR/$APP.pid"
 
 COLOR=""
