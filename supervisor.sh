@@ -611,7 +611,11 @@ if ! [[ "${1:-}" == "status" || "${1:-}" == "start" && -n "${2:-}" || "${1:-}" =
 fi
 (( NO_COLOR == 1 )) && COLOR="" # CLI option > config file
 
-mkdir -p "$PID_DIR"
+if ! mkdir -p "$PID_DIR" 2>/dev/null; then
+	echo "Error: PID directory '$PID_DIR' could not be created. Check permissions."
+	echo
+	exit 1
+fi >&2
 
 # Get command
 case "${1:-}" in
