@@ -301,7 +301,7 @@ _stop_app() {
 }
 
 _show_process_status_table() {
-	local i basename name=("Name") state=("State") pid=("PID")
+	local i basename name=("Name") state=("State") pid=("PID") logfile=("Logfile")
 
 	# Get process states
 	for i in "$PID_DIR"/*.pid; do
@@ -310,9 +310,11 @@ _show_process_status_table() {
 		if kill -0 -"$(<"$i")" 2>/dev/null; then
 			state+=(running)
 			pid+=("$(<"$i")")
+			logfile+=("$(readlink -f "/proc/${pid[-1]}/fd/1" || true)")
 		else
 			state+=(stopped)
 			pid+=("")
+			logfile+=("")
 		fi
 	done
 
@@ -334,10 +336,11 @@ _show_process_status_table() {
 	}
 
 	# Set column padding
-	local padding_name padding_state padding_pid
-	padding_name=$( __get_max_element_length_from_array "${name[@]}")
-	padding_state=$(__get_max_element_length_from_array "${state[@]}")
-	padding_pid=$(  __get_max_element_length_from_array "${pid[@]}")
+	local padding_name padding_state padding_pid padding_logfile
+	padding_name=$(    __get_max_element_length_from_array "${name[@]}"    )
+	padding_state=$(   __get_max_element_length_from_array "${state[@]}"   )
+	padding_pid=$(     __get_max_element_length_from_array "${pid[@]}"     )
+	padding_logfile=$( __get_max_element_length_from_array "${logfile[@]}" )
 
 	# Repeat $1 "$2"-times
 	__str_repeat(){
@@ -370,6 +373,12 @@ _show_process_status_table() {
 		# 3rd column
 		__str_repeat "$1" $(( padding_pid  + 2 ))
 
+		# Separator
+		printf -- "%s" "$3"
+
+		# 4th column
+		__str_repeat "$1" $(( padding_logfile  + 2 ))
+
 		# End character
 		printf -- "%s\n" "$4"
 	}
@@ -389,7 +398,7 @@ _show_process_status_table() {
 			# Manual padding is required instead
 
 			# 1st column (Name)
-			printf -- "│ "
+			echo -n "│ "
 			if (( i == 0 )); then
 				# Print header row in bright white
 				printf -- "%s" "$white${name[i]}$reset"
@@ -399,7 +408,7 @@ _show_process_status_table() {
 			__str_repeat " " $(( padding_name - ${#name[i]} + 1 ))
 
 			# 2nd column (State)
-			printf -- "│ "
+			echo -n "│ "
 			case "${state[i]}" in
 				  State) printf -- "%s" "$white${state[i]}$reset" ;; # Print header row in bright white
 				running) printf -- "%s" "$green${state[i]}$reset" ;; # Print "running" jobs in green
@@ -408,22 +417,37 @@ _show_process_status_table() {
 			__str_repeat " " $(( padding_state - ${#state[i]} + 1 ))
 
 			# 3rd column (PID)
-			printf -- "│ "
+			echo -n "│ "
 			case "${pid[i]}" in
 				PID) printf -- "%s" "$white${pid[i]}$reset" ;;
 				  *) printf -- "%s"       "${pid[i]}"       ;;
 			esac
 			__str_repeat " " $(( padding_pid - ${#pid[i]} + 1 ))
-			echo "│"
+
+			# 4th column (Logfile)
+			echo -n "│ "
+			case "${logfile[i]}" in
+				Logfile) printf -- "%s" "$white${logfile[i]}$reset" ;;
+				      *) printf -- "%s"       "${logfile[i]}"       ;;
+			esac
+			__str_repeat " " $(( padding_logfile - ${#logfile[i]} + 1 ))
 		else
 			# Colorless table
 			# 1st column (Name)
-			printf -- "│ %-*s "    "$padding_name"  "${name[i]}"
+			printf -- "│ %-*s " "$padding_name"    "${name[i]}"
+
 			# 2nd column (State)
-			printf -- "│ %-*s "    "$padding_state" "${state[i]}"
+			printf -- "│ %-*s " "$padding_state"   "${state[i]}"
+
 			# 3rd column (PID)
-			printf -- "│ %-*s │\n" "$padding_pid"   "${pid[i]}"
+			printf -- "│ %-*s " "$padding_pid"     "${pid[i]}"
+
+			# 4th column (Logfile)
+			printf -- "│ %-*s " "$padding_logfile" "${logfile[i]}"
 		fi
+
+		# End character
+		echo "│"
 
 		# Separate header row from table body
 		if (( i == 0 )); then
