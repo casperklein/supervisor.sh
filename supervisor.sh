@@ -990,9 +990,9 @@ _clean_up_job() {
 
 while :; do
 	if wait -n -p JOB_PID; then
-		JOB_STATUS=0
+		JOB_EXIT_CODE=0
 	else
-		JOB_STATUS=$?
+		JOB_EXIT_CODE=$?
 	fi
 
 	if [ -z "${JOB_PID:-}" ]; then
@@ -1008,7 +1008,7 @@ while :; do
 		else
 			# If $JOB_PID is empty while $PIDS is not, 'wait' was interrupted.
 			# This happens when a signal such as SIGUSR1 is received.
-			# JOB_STATUS = 138 = 128 + 10 (SIGUSR1)
+			# JOB_EXIT_CODE = 138 = 128 + 10 (SIGUSR1)
 			continue
 		fi
 	fi
@@ -1019,8 +1019,8 @@ while :; do
 				_status "Job termination is expected: ${JOB_NAME[i]} (${PIDS[i]})"
 			fi
 
-			if [[ $JOB_STATUS -gt 0 && ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
-				_status "Job failed [$JOB_STATUS]: ${JOB_NAME[i]} (${PIDS[i]})"
+			if [[ $JOB_EXIT_CODE -gt 0 && ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
+				_status "Job failed [$JOB_EXIT_CODE]: ${JOB_NAME[i]} (${PIDS[i]})"
 			else
 				_status "Job terminated: ${JOB_NAME[i]} (${PIDS[i]})"
 			fi
@@ -1028,7 +1028,7 @@ while :; do
 			_clean_up_job "$i"
 
 			# Restart job if necessary
-			if [[ "${JOB_RESTART[i]}" == "error" && $JOB_STATUS -gt 0 || "${JOB_RESTART[i]}" == "on" ]]; then
+			if [[ "${JOB_RESTART[i]}" == "error" && $JOB_EXIT_CODE -gt 0 || "${JOB_RESTART[i]}" == "on" ]]; then
 				if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
 					# Job was stopped unexpected
 					# Check if restart limit was reached
