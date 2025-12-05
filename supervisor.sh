@@ -477,7 +477,7 @@ _start_job_cli() {
 			# Set marker
 			_set_job_state "start" "$PID_DIR/$name"
 
-			_status "Starting: $name"
+			_status "Starting job: $name"
 
 			# Send USR1 signal to supervisor to trigger the job start
 			# start_job_trap() will then start the job
@@ -514,7 +514,7 @@ _stop_job_cli() {
 			_set_job_state "stop" "$PID_DIR/$name"
 
 			# Send SIGTERM to job process group
-			_status "Stopping: $name ($job_pid)"
+			_status "Stopping job: $name ($job_pid)"
 			kill -SIGTERM -"$job_pid" 2>/dev/null || true
 
 			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD}s before sending SIGKILL."
@@ -539,7 +539,7 @@ _stop_job_cli() {
 			# when the .pid file has been removed (supervisor has stopped, e.g. when no more jobs are running).
 			until [[ -f "$PID_DIR/$name.pid.stopped" || ! -f "$PID_DIR/$name.pid" ]]; do sleep 0.2; done
 
-			_status "Job stopped: $name ($job_pid)"
+			_status "Job terminated: $name ($job_pid)"
 			return 0
 		else
 			echo "Error: $name is not running." >&2
@@ -1034,7 +1034,7 @@ while :; do
 			fi
 
 			if [[ $JOB_EXIT_CODE -gt 0 && ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
-				_status "Job failed [$JOB_EXIT_CODE]: ${JOB_NAME[i]} (${PIDS[i]})"
+				_status "Job failed with exit code $JOB_EXIT_CODE: ${JOB_NAME[i]} (${PIDS[i]})"
 			else
 				_status "Job terminated: ${JOB_NAME[i]} (${PIDS[i]})"
 			fi
