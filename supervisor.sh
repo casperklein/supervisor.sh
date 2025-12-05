@@ -811,6 +811,20 @@ if [ "$1" != "--daemon" ]; then
 fi
 
 _clean_up() {
+	__total_runtime() {
+		local total=$SECONDS
+		local days=$((   total / 86400         ))
+		local hours=$(( (total % 86400) / 3600 ))
+		local mins=$((  (total %  3600) /   60 ))
+		local secs=$((   total %    60         ))
+    		local output
+
+		(( days > 0 )) && output="${days}d "
+		output+="${hours}h ${mins}m ${secs}s"
+
+    		echo "$output"
+	}
+
 	local i grace_period_start=$SECONDS last_wait_info=$SECONDS
 
 	__wait_info() {
@@ -858,7 +872,7 @@ _clean_up() {
 
 	_delete_runtime_files
 
-	_status "$APP stopped ($$)"
+	_status "$APP ($$) terminated after $(__total_runtime)"
 	exit 0
 }
 trap "      _clean_up" EXIT
