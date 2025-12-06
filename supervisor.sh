@@ -245,10 +245,20 @@ _fix_unclean_shutdown() {
 }
 
 _stop_app() {
+	# $1   CLI indicator
+	# $2   If set, return instead of exit
+
 	_exit_if_app_is_not_running
 
 	local app_pid
 	app_pid=$(<"$PID_FILE")
+
+	__wait_until_stopped() {
+		while kill -0 "$app_pid" 2>/dev/null; do
+			sleep 0.2
+		done
+		_status "$APP ($app_pid) terminated"
+	}
 
 	if [ -f "$PID_DIR/.sigterm" ]; then
 		# Termination already in progress, prevent loop.
@@ -256,6 +266,13 @@ _stop_app() {
 			# Stop triggered by "supervisor.sh stop"
 			_status "Stopping $APP ($app_pid)"
 		fi
+
+		# Function was called from CLI
+		if [ -n "${1:-}" ]; then
+			_status "Stop already in progress. Waiting.."
+			__wait_until_stopped
+		fi
+
 		# Trigger _clean_up()
 		exit 0
 	fi
@@ -290,13 +307,9 @@ _stop_app() {
 	# --> kill -SIGTERM job1 job2 job3 supervisor
 	setsid bash -c "kill -SIGTERM ${job_pids[*]} 2>/dev/null"
 
-	# Wait until stopped
-	while kill -0 "$app_pid" 2>/dev/null; do
-		sleep 0.2
-	done
-	_status "$APP stopped ($app_pid)"
+	__wait_until_stopped
 
-	[ -n "${1:-}" ] && return 0 # Return and start supervisor again, if $1 is not empty (supervisor.sh restart)
+	[ -n "${2:-}" ] && return 0 # Return and start supervisor again, if $2 is not empty (supervisor.sh restart)
 	exit 0
 }
 
@@ -663,7 +676,7 @@ case "${1:-}" in
 		# Stop supervisor or job?
 		if [ -z "${2:-}" ]; then
 			# Stop supervisor
-			_stop_app
+			_stop_app cli
 		else
 			# Stop job if running
 			_stop_job_cli "$2"
@@ -684,7 +697,7 @@ case "${1:-}" in
 				exit 1
 			fi >&2
 
-			_stop_app no-exit # Continue from here after the supervisor was stopped to start again
+			_stop_app cli no-exit # Continue from here after the supervisor was stopped to start again
 		else
 			_stop_job_cli "$2"
 			_start_job_cli "$2"
