@@ -648,7 +648,8 @@ if ! [[ "${1:-}" == "status" || "${1:-}" == "start" && -n "${2:-}" || "${1:-}" =
 fi
 (( NO_COLOR == 1 )) && COLOR="" # CLI option > config file
 
-if ! mkdir -p "$PID_DIR" 2>/dev/null; then
+# shellcheck disable=SC2174
+if ! mkdir -m 700 -p "$PID_DIR" 2>/dev/null; then
 	echo "Error: PID directory '$PID_DIR' could not be created. Check permissions."
 	echo
 	exit 1
