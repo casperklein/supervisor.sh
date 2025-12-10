@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Perform some simple tests to ensure that the YAML file is parsed successfully.
 
@@ -57,12 +57,19 @@ _show_error_and_exit() {
 [ -z "$KEEP_RUNNING" ]               && _show_error_and_exit "VAR" "KEEP_RUNNING"
 [ -z "$COLOR" ]                      && _show_error_and_exit "VAR" "COLOR"
 
-count=${#JOB_NAME[@]}
-(( count !=  ${#JOB_COMMAND[@]} ))   && _show_error_and_exit "ARRAY" "JOB_COMMAND"
-(( count !=  ${#JOB_RESTART[@]} ))   && _show_error_and_exit "ARRAY" "JOB_RESTART"
-(( count !=  ${#JOB_REQUIRED[@]} ))  && _show_error_and_exit "ARRAY" "JOB_REQUIRED"
-(( count !=  ${#JOB_LOGFILE[@]} ))   && _show_error_and_exit "ARRAY" "JOB_LOGFILE"
-(( count !=  ${#JOB_AUTOSTART[@]} )) && _show_error_and_exit "ARRAY" "JOB_AUTOSTART"
+JOB_COUNT_EXPECTED=$(grep -c name: $CONFIG_FILE)
+JOB_COUNT=${#JOB_NAME[@]}
+if (( JOB_COUNT == JOB_COUNT_EXPECTED )); then
+	(( JOB_COUNT !=  ${#JOB_COMMAND[@]} ))   && _show_error_and_exit "ARRAY" "JOB_COMMAND"
+	(( JOB_COUNT !=  ${#JOB_RESTART[@]} ))   && _show_error_and_exit "ARRAY" "JOB_RESTART"
+	(( JOB_COUNT !=  ${#JOB_REQUIRED[@]} ))  && _show_error_and_exit "ARRAY" "JOB_REQUIRED"
+	(( JOB_COUNT !=  ${#JOB_LOGFILE[@]} ))   && _show_error_and_exit "ARRAY" "JOB_LOGFILE"
+	(( JOB_COUNT !=  ${#JOB_AUTOSTART[@]} )) && _show_error_and_exit "ARRAY" "JOB_AUTOSTART"
+else
+	echo "Error: Parsing 'supervisor.yaml' failed. $JOB_COUNT_EXPECTED jobs were expected, but the result was $JOB_COUNT." >&2
+	echo >&2
+	exit 1
+fi
 
 # Check if the correct 'yq' program is used
 if [[ "$(yq --version)" != "yq (https://github.com/mikefarah/yq/)"* ]]; then
@@ -73,5 +80,5 @@ if [[ "$(yq --version)" != "yq (https://github.com/mikefarah/yq/)"* ]]; then
 	exit 1
 fi >&2
 
-echo "Parsing was successful. Everything seems fine :)"
+echo "'yq' tests completed successfully."
 echo

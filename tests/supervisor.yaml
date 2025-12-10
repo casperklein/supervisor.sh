@@ -1,7 +1,9 @@
 supervisor:
   sigterm_grace_period: 7
   color: "\e[0;34m" # blue text color
-  logfile: "/tmp/supervisor-test.log"
+  # color_error: "\e[0;33m" # yellow text color
+  # logfile: /doesnotexist/supervisor.log
+  logfile: /tmp/supervisor.log
 
 jobs:
   - name: "parent.sh"
@@ -11,10 +13,6 @@ jobs:
     command: "fail.sh"
     restart_limit: 2
     required: "yes"
-
-  - name: "test"
-    command: "supervisor.sh -c supervisor.yaml stop test > /dev/null"
-    restart: "off"
 
   - name: "sleep"
     command: "sleep 1d"

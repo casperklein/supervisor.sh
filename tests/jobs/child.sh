@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Ignore SIGTERM
 trap 'echo "Child: SIGTERM received."' SIGTERM
