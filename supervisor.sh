@@ -124,29 +124,46 @@ _read_config_file() {
 	# yq -r      --> unwrap scalar, print the value with no quotes, colors or comments
 
 	# supervisor config                       Key                  Default value instead of 'null'
-	LOG_FILE=$(            yq -r '.supervisor.logfile              // "/dev/stdout"' "$CONFIG_FILE")
-	SIGTERM_GRACE_PERIOD=$(yq -r '.supervisor.sigterm_grace_period // "10"'          "$CONFIG_FILE")
-	KEEP_RUNNING=$(        yq -r '.supervisor.keep_running         // "off"'         "$CONFIG_FILE")
-	COLOR=$(               yq -r '.supervisor.color                // ""'            "$CONFIG_FILE")
+	LOG_FILE=$(            yq -r '.supervisor.logfile              // "/dev/stdout"'   "$CONFIG_FILE")
+	SIGTERM_GRACE_PERIOD=$(yq -r '.supervisor.sigterm_grace_period // "10"'            "$CONFIG_FILE")
+	KEEP_RUNNING=$(        yq -r '.supervisor.keep_running         // "off"'           "$CONFIG_FILE")
+	COLOR=$(               yq -r '.supervisor.color                // ""'              "$CONFIG_FILE")
+	COLOR_ERROR=$(         yq -r '.supervisor.color_error          // "'$'\e[1;31m''"' "$CONFIG_FILE")
 
 	# Job config                                    Key            Default value instead of 'null'
-	mapfile -t JOB_NAME          < <(yq -r '.jobs[].name           // ""'            "$CONFIG_FILE")
-	mapfile -t JOB_COMMAND       < <(yq -r '.jobs[].command        // ""'            "$CONFIG_FILE")
-	mapfile -t JOB_AUTOSTART     < <(yq -r '.jobs[].autostart      // "on"'          "$CONFIG_FILE")
-	mapfile -t JOB_LOGFILE       < <(yq -r '.jobs[].logfile        // "/dev/stdout"' "$CONFIG_FILE")
-	mapfile -t JOB_REQUIRED      < <(yq -r '.jobs[].required       // "no"'          "$CONFIG_FILE")
-	mapfile -t JOB_RESTART       < <(yq -r '.jobs[].restart        // "error"'       "$CONFIG_FILE")
-	mapfile -t JOB_RESTART_LIMIT < <(yq -r '.jobs[].restart_limit  // "3"'           "$CONFIG_FILE")
+	mapfile -t JOB_NAME          < <(yq -r '.jobs[].name           // ""'              "$CONFIG_FILE")
+	mapfile -t JOB_COMMAND       < <(yq -r '.jobs[].command        // ""'              "$CONFIG_FILE")
+	mapfile -t JOB_AUTOSTART     < <(yq -r '.jobs[].autostart      // "on"'            "$CONFIG_FILE")
+	mapfile -t JOB_LOGFILE       < <(yq -r '.jobs[].logfile        // "/dev/stdout"'   "$CONFIG_FILE")
+	mapfile -t JOB_REQUIRED      < <(yq -r '.jobs[].required       // "no"'            "$CONFIG_FILE")
+	mapfile -t JOB_RESTART       < <(yq -r '.jobs[].restart        // "error"'         "$CONFIG_FILE")
+	mapfile -t JOB_RESTART_LIMIT < <(yq -r '.jobs[].restart_limit  // "3"'             "$CONFIG_FILE")
 	declare -A JOB_RESTART_COUNT
 }
 
 _status() {
-	[ -n "$COLOR" ] && (( FOREGROUND == 1 )) && printf -- "%s" "$COLOR" # set color
+	# $1   Status message
+	# $2   Treat message as an error if set
+	local color=""
+
+	# Use colors only when running in foreground
+	if (( FOREGROUND == 1 )); then
+		if [[ -z "${2:-}" && -n "$COLOR" ]]; then
+			# Use configured color for status message
+			color=$COLOR
+		elif [[ -n "${2:-}" && -n "$COLOR_ERROR" ]]; then
+			# Use configured color for error message
+			color=$COLOR_ERROR
+		fi
+	fi
+
+	[ -n "$color" ] && printf -- "%s" "$color" # set color
 
 	printf -- "%(%F %T)T " -1 # Print current date/time
 	printf -- "%s\n" "$1"     # Print status message
 
-	[ -n "$COLOR" ] && (( FOREGROUND == 1 )) && printf -- "%s" $'\e[0m' # reset color
+	[ -n "$color" ] && printf -- "%s" $'\e[0m' # reset color
+
 	return 0
 }
 
@@ -722,6 +739,7 @@ case "${1:-}" in
 			SIGTERM_GRACE_PERIOD \
 			KEEP_RUNNING         \
 			COLOR                \
+			COLOR_ERROR          \
 			JOB_NAME             \
 			JOB_COMMAND          \
 			JOB_AUTOSTART        \
@@ -999,8 +1017,7 @@ _exit_app_if_job_is_required() {
 	if [ "${JOB_REQUIRED[i]}" == "yes" ]; then
 		# Keep running, if the job was stopped on purpose (via the 'stop' command)
 		if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
-			_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
-			_status "Required job stopped: ${JOB_NAME[i]}"
+			_status "Required job stopped: ${JOB_NAME[i]}" ERROR
 			_stop_app
 		fi
 	fi
@@ -1048,7 +1065,7 @@ while :; do
 			fi
 
 			if [[ $JOB_EXIT_CODE -gt 0 && ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
-				_status "Job failed with exit code $JOB_EXIT_CODE: ${JOB_NAME[i]} (${PIDS[i]})"
+				_status "Job failed with exit code $JOB_EXIT_CODE: ${JOB_NAME[i]} (${PIDS[i]})" ERROR
 			else
 				_status "Job terminated: ${JOB_NAME[i]} (${PIDS[i]})"
 			fi

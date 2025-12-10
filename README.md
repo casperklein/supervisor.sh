@@ -84,12 +84,13 @@ By default, the configuration is read from `/etc/supervisor.yaml`. You can speci
 
 ### supervisor
 
-Key                    | Required | Default       | Possible Values | Description
------------------------|----------|---------------|-----------------|---------------------------------------------------------------------------------------------
-`logfile`              | No       | `/dev/stdout` | Valid file path | Log file for supervisor output (only for daemon mode)
-`sigterm_grace_period` | No       | `10`          | Any number      | Grace period in seconds until SIGKILL is send to processes that keeps running after SIGTERM.
-`keep_running`         | No       | `off`         | `on`, `off`     | Exit supervisor when all jobs are stopped (`off`) or keep running (`on`).
-`color`                | No       |               | e.g. `\e[0;34m` | Sets the text color using an escape sequence for terminal colors (only for forground mode).
+Key                    | Required | Default           | Possible Values   | Description
+-----------------------|----------|-------------------|-------------------|------------------------------------------------------------------------------------------------
+`logfile`              | No       | `/dev/stdout`     | Valid file path   | Log file for supervisor output (only for daemon mode)
+`sigterm_grace_period` | No       | `10`              | Any number        | Grace period in seconds until SIGKILL is send to processes that keeps running after SIGTERM.
+`keep_running`         | No       | `off`             | `on`, `off`       | Exit supervisor when all jobs are stopped (`off`) or keep running (`on`).
+`color`                | No       |                   | `\e[0;34m` (blue) | Text color defined as [escape sequence](https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124) for terminal colors (only for forground mode).
+`color_error`          | No       | `\e[1;31m]` (red) | `\e[0;32m` (green)| Text color for errors defined as [escape sequence](https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124) for terminal colors (only for forground mode).
 
 ### jobs
 
