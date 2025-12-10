@@ -139,6 +139,21 @@ _read_config_file() {
 	mapfile -t JOB_RESTART       < <(yq -r '.jobs[].restart        // "error"'         "$CONFIG_FILE")
 	mapfile -t JOB_RESTART_LIMIT < <(yq -r '.jobs[].restart_limit  // "3"'             "$CONFIG_FILE")
 	declare -A JOB_RESTART_COUNT
+
+	__is_integer() {
+		if ! [[ "${!1}" =~ ^[0-9]+$ ]]; then
+			echo "Error: ${1,,} in $CONFIG_FILE must be an integer >= 0. Current value: ${!1}"
+			echo
+			exit 1
+		fi >&2
+	}
+
+	__is_integer SIGTERM_GRACE_PERIOD
+
+	local i
+	for i in "${!JOB_RESTART_LIMIT[@]}"; do
+		__is_integer "JOB_RESTART_LIMIT[$i]"
+	done
 }
 
 _status() {
