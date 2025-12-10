@@ -934,9 +934,9 @@ if (( FOREGROUND == 0 )); then
 		# Close STDIN file descriptor
 		exec 0>&-
 
-		# Redirect STDOUT & STDERR to log file
+		# Redirect STDOUT and STDERR to /dev/null or a log file if configured
 		if [ "$LOG_FILE" == "/dev/stdout" ]; then
-			exec &>> /dev/null
+			exec &>  /dev/null
 		else
 			exec &>> "$LOG_FILE"
 		fi
@@ -1090,8 +1090,8 @@ while :; do
 			# Restart job if necessary
 			if [[ "${JOB_RESTART[i]}" == "error" && $JOB_EXIT_CODE -gt 0 || "${JOB_RESTART[i]}" == "on" ]]; then
 				if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
-					# Job was stopped unexpected
-					# Check if restart limit was reached
+					# Job termination is unexpected
+					# Restart job if limit is not already reached
 					if (( JOB_RESTART_LIMIT[i] == 0 || JOB_RESTART_COUNT[i] < JOB_RESTART_LIMIT[i] )); then
 						(( ++JOB_RESTART_COUNT[i] ))
 						if (( JOB_RESTART_LIMIT[i] == 0 )); then
