@@ -141,18 +141,21 @@ _read_config_file() {
 	declare -A JOB_RESTART_COUNT
 
 	__is_integer() {
-		if ! [[ "${!1}" =~ ^[0-9]+$ ]]; then
-			echo "Error: ${1,,} in $CONFIG_FILE must be an integer >= 0. Current value: ${!1}"
+		# $1   Value
+		# $2   Display name
+
+		if ! [[ "$1" =~ ^[0-9]+$ ]]; then
+			echo "Error: $2 in $CONFIG_FILE must be an integer >= 0. Current value is: $1"
 			echo
 			exit 1
 		fi >&2
 	}
 
-	__is_integer SIGTERM_GRACE_PERIOD
+	__is_integer "$SIGTERM_GRACE_PERIOD" "'sigterm_grace_period'"
 
 	local i
 	for i in "${!JOB_RESTART_LIMIT[@]}"; do
-		__is_integer "JOB_RESTART_LIMIT[$i]"
+		__is_integer "${JOB_RESTART_LIMIT[i]}" "Job #$((++i)) 'restart_limit'"
 	done
 }
 
