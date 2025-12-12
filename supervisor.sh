@@ -140,6 +140,15 @@ _read_config_file() {
 	mapfile -t JOB_RESTART_LIMIT < <(yq -r '.jobs[].restart_limit  // "3"'             "$CONFIG_FILE")
 	declare -A JOB_RESTART_COUNT
 
+	# Check required job keys
+	for i in "${!JOB_NAME[@]}"; do
+		if [[ -z "${JOB_NAME[i]}" || -z "${JOB_COMMAND[i]}" ]]; then
+			echo "Error: Parsing job #$((++i)) configuration failed. The 'name' or 'command' key cannot be empty/missing. Check configuration file: $CONFIG_FILE"
+			echo
+			exit 1
+		fi >&2
+	done
+
 	__is_integer() {
 		# $1   Value
 		# $2   Display name
@@ -151,6 +160,7 @@ _read_config_file() {
 		fi >&2
 	}
 
+	# Validate values
 	__is_integer "$SIGTERM_GRACE_PERIOD" "'sigterm_grace_period'"
 
 	local i
@@ -830,15 +840,6 @@ if ! (( BASH_VERSINFO[0] > 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 1)
 fi >&2
 
 # Begin server only part
-
-# Check for required keys in jobs configuration
-for i in "${!JOB_NAME[@]}"; do
-	if [[ -z "${JOB_NAME[i]}" || -z "${JOB_COMMAND[i]}" ]]; then
-		echo "Error: Parsing job #$((++i)) failed. The 'name' or 'command' key cannot be empty/missing. Check configuration file: $CONFIG_FILE"
-		echo
-		exit 1
-	fi >&2
-done
 
 # Run as daemon
 if [ "$1" != "--daemon" ]; then
