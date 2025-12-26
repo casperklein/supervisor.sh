@@ -37,6 +37,12 @@ else
 	CONFIG_FILE="/etc/supervisor.yaml.sh"
 fi
 
+# Enable Bash builtins if available
+# mkdir builtin behaves differently when using '-m'
+for i in rm sleep; do
+	enable "$i" &>/dev/null || true
+done
+
 # Begin shared part (client & server)
 
 # Show usage and exit

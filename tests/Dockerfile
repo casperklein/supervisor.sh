@@ -28,7 +28,7 @@ RUN <<EOF
 			apt-get -y install $PACKAGES
 
 			if ! bash --version &>/dev/null; then
-				apt-get -y install bash
+				apt-get -y install bash bash-builtins
 			fi
 
 			rm -rf /var/lib/apt/lists/*
