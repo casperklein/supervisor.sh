@@ -697,7 +697,12 @@ done
 if ! [[ "${1:-}" == "status" || "${1:-}" == "start" && -n "${2:-}" || "${1:-}" == "stop" && -z "${2:-}" ]]; then
 	_read_config_file
 fi
-(( NO_COLOR == 1 )) && COLOR="" # CLI option > config file
+
+# CLI option > config file
+if (( NO_COLOR == 1 )); then
+	COLOR=""
+	COLOR_ERROR=""
+fi
 
 # shellcheck disable=SC2174
 if ! mkdir -m 700 -p "$PID_DIR" 2>/dev/null; then
