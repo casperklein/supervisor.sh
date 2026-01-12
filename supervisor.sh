@@ -155,6 +155,20 @@ _read_config_file() {
 		fi >&2
 	done
 
+	# JOB_NAME must be uniq
+	declare -A job_name_uniq
+	local j=0
+	for i in "${JOB_NAME[@]}"; do
+		((++j))
+		if [ -n "${job_name_uniq[$i]:-}" ]; then
+			echo "Error: Parsing job #$j configuration failed. Job #${job_name_uniq[$i]} is already named '$i'. Check: $CONFIG_FILE"
+			echo
+			exit 1
+		else
+			job_name_uniq[$i]=$j
+		fi >&2
+	done
+
 	__is_integer() {
 		# $1   Value
 		# $2   Display name
