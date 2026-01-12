@@ -147,9 +147,10 @@ _read_config_file() {
 	declare -A JOB_RESTART_COUNT
 
 	# Check required job keys
+	local i
 	for i in "${!JOB_NAME[@]}"; do
 		if [[ -z "${JOB_NAME[i]}" || -z "${JOB_COMMAND[i]}" ]]; then
-			echo "Error: Parsing job #$((++i)) configuration failed. The 'name' or 'command' key cannot be empty/missing. Check configuration file: $CONFIG_FILE"
+			echo "Error: Parsing job #$((++i)) configuration failed. The 'name' or 'command' key cannot be empty/missing. Check: $CONFIG_FILE"
 			echo
 			exit 1
 		fi >&2
@@ -183,7 +184,6 @@ _read_config_file() {
 	# Validate values
 	__is_integer "$SIGTERM_GRACE_PERIOD" "'sigterm_grace_period'"
 
-	local i
 	for i in "${!JOB_RESTART_LIMIT[@]}"; do
 		__is_integer "${JOB_RESTART_LIMIT[i]}" "Job #$((++i)) 'restart_limit'"
 	done
