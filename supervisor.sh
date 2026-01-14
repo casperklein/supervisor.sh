@@ -522,11 +522,15 @@ _start_job_cli() {
 			# Set marker
 			_set_job_state "start" "$PID_DIR/$name"
 
-			_status "Starting job: $name"
-
 			# Send USR1 signal to supervisor to trigger the job start
 			# start_job_trap() will then start the job
-			kill -SIGUSR1 "$(<"$PID_FILE")"
+			if ! kill -SIGUSR1 "$(<"$PID_FILE")"; then
+				echo "Error: Triggering job start failed."
+				echo
+				return 1
+			fi >&2
+
+			_status "Starting job: $name"
 
 			# Wait until job has started
 			while [ -f "$PID_DIR/$name.pid.start" ]; do
@@ -554,35 +558,23 @@ _stop_job_cli() {
 	local grace_period_start=$SECONDS
 
 	if [ -f "$PID_DIR/$name.pid" ]; then
-		job_pid=$(<"$PID_DIR/$name.pid")
-		if kill -0 -"$job_pid" 2>/dev/null; then
-			_set_job_state "stop" "$PID_DIR/$name"
-
+		if [ ! -f "$PID_DIR/$name.pid.stopped" ]; then
 			# Send SIGTERM to job process group
+			job_pid=$(<"$PID_DIR/$name.pid")
 			_status "Stopping job: $name ($job_pid)"
+			_set_job_state "stop" "$PID_DIR/$name"
 			kill -SIGTERM -"$job_pid" 2>/dev/null || true
 
 			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD}s before sending SIGKILL."
 
-			# Wait until stopped
+			# Wait until job has stopped
 			while kill -0 -"$job_pid" 2>/dev/null; do
 				if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
-					_status "Job still running, sending SIGKILL: $name ($job_pid)"
+					_status "Job is still running, sending SIGKILL: $name ($job_pid)"
 					kill -SIGKILL -"$job_pid" 2>/dev/null || true
 				fi
 				sleep 0.2
 			done
-
-			if ! _is_app_running; then
-				_status "$APP stopped."
-				_status "Job was most likely stopped: $name ($job_pid)"
-				exit 0
-			fi
-
-			# Wait until the job is stopped.
-			# This is confirmed either by the presence of the .stopped file (supervisor is still running and the job is stopped), or
-			# when the .pid file has been removed (supervisor has stopped, e.g. when no more jobs are running).
-			until [[ -f "$PID_DIR/$name.pid.stopped" || ! -f "$PID_DIR/$name.pid" ]]; do sleep 0.2; done
 
 			_status "Job terminated: $name ($job_pid)"
 			return 0
@@ -738,6 +730,7 @@ case "${1:-}" in
 			_stop_app_cli # Continue from here after the supervisor was stopped to start again
 		else
 			_stop_job_cli "$2"
+			sleep 1
 			_start_job_cli "$2"
 			exit 0
 		fi
