@@ -880,13 +880,15 @@ _clean_up() {
 	while :; do
 		for i in "${!PIDS[@]}"; do
 			if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stopped" ]; then
+				# Is job still running?
 				if ! kill -0 -"${PIDS[i]}" 2>/dev/null; then
 					_status "Job terminated: ${JOB_NAME[i]} (${PIDS[i]})"
 					unset "PIDS[$i]"
 					_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
 				else
+					# Kill job after grace period
 					if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
-						_status "Job still running, sending SIGKILL: ${JOB_NAME[i]} (${PIDS[i]})"
+						_status "Job is still running, sending SIGKILL: ${JOB_NAME[i]} (${PIDS[i]})"
 						kill -SIGKILL -"${PIDS[i]}" 2>/dev/null || true
 					fi
 				fi
@@ -903,6 +905,7 @@ _clean_up() {
 			last_wait_info=$SECONDS
 			__wait_info
 		fi
+
 		sleep 0.2
 	done
 
