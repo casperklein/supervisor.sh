@@ -321,7 +321,7 @@ _stop_app_cli() {
 		kill -SIGTERM "$app_pid" 2>/dev/null || true
 	fi
 
-	while [ -f "$PID_FILE" ]; do #todo kill -0?
+	while kill -0 "$app_pid" 2>/dev/null; do
 		sleep 0.5
 	done
 	_status "$APP ($app_pid) terminated"
