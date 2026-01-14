@@ -1001,7 +1001,7 @@ _kill_process_group() {
 	local grace_period_start=$SECONDS
 
 	if kill -0 -"${PIDS[i]}" 2>/dev/null; then
-		kill -SIGTERM -"${PIDS[i]}" 2>/dev/null
+		kill -SIGTERM -"${PIDS[i]}" 2>/dev/null || true
 		_status "Waiting for child processes to terminate: ${JOB_NAME[i]} (${PIDS[i]})"
 
 		while kill -0 -"${PIDS[i]}" 2>/dev/null; do
