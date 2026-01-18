@@ -28,6 +28,7 @@ NO_COLOR=0
 CONFIG_FILE_BASH=0
 FOREGROUND=0
 PIDS=()
+TIME_FORMAT="%F %T" # Default value for CLI commands where config is not read, e.g. 'supervisor.sh stop'
 
 # Set default configuration path
 if hash yq 2>/dev/null; then
@@ -134,6 +135,7 @@ _read_config_file() {
 	KEEP_RUNNING=$(        yq -r '.supervisor.keep_running         // "off"'           "$CONFIG_FILE")
 	COLOR=$(               yq -r '.supervisor.color                // ""'              "$CONFIG_FILE")
 	COLOR_ERROR=$(         yq -r '.supervisor.color_error          // "'$'\e[1;31m''"' "$CONFIG_FILE")
+	TIME_FORMAT=$(         yq -r '.supervisor.time_format          // "%F %T"'         "$CONFIG_FILE") # See 'man strftime'
 
 	# Job config                                    Key            Default value instead of 'null'
 	mapfile -t JOB_NAME          < <(yq -r '.jobs[].name           // ""'              "$CONFIG_FILE")
@@ -204,12 +206,12 @@ _status() {
 		fi
 	fi
 
-	[ -n "$color" ] && printf -- "%s" "$color" # set color
+	[ -n "$color" ] && printf -- "%s" "$color" # Set color
 
-	printf -- "%(%F %T)T " -1 # Print current date/time
-	printf -- "%s\n" "$1"     # Print status message
+	printf -- "%($TIME_FORMAT)T " -1 # Print current date/time
+	printf -- "%s\n" "$1"            # Print status message
 
-	[ -n "$color" ] && printf -- "%s" $'\e[0m' # reset color
+	[ -n "$color" ] && printf -- "%s" $'\e[0m' # Reset color
 
 	return 0
 }
@@ -753,6 +755,7 @@ case "${1:-}" in
 			KEEP_RUNNING         \
 			COLOR                \
 			COLOR_ERROR          \
+			TIME_FORMAT          \
 			JOB_NAME             \
 			JOB_COMMAND          \
 			JOB_AUTOSTART        \

@@ -91,6 +91,7 @@ Key                    | Required | Default           | Possible Values   | Desc
 `keep_running`         | No       | `off`             | `on`, `off`       | Exit supervisor when all jobs are stopped (`off`) or keep running (`on`).
 `color`                | No       |                   | `\e[0;34m` (blue) | Text color defined as [escape sequence](https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124) for terminal colors (only for forground mode).
 `color_error`          | No       | `\e[1;31m]` (red) | `\e[0;32m` (green)| Text color for errors defined as [escape sequence](https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124) for terminal colors (only for forground mode).
+`time_format`          | No       | `%F %T`           | `strftime` format | Time format that is used for status messages. See [`strftime`](https://linux.die.net/man/3/strftime) for possible values.
 
 ### jobs
 
