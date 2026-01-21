@@ -23,8 +23,6 @@ VER=0.12
 : "${PID_DIR:=/run/$APP}" # Allow override via ENV
 PID_FILE="$PID_DIR/$APP.pid"
 
-COLOR=""
-NO_COLOR=0
 CONFIG_FILE_BASH=0
 FOREGROUND=0
 LINT=0
@@ -282,12 +280,14 @@ _status() {
 		fi
 	fi
 
-	[ -n "$color" ] && printf -- "%s" "$color" # Set color
-
-	printf -- "%($TIME_FORMAT)T " -1 # Print current date/time
-	printf -- "%s\n" "$1"            # Print status message
-
-	[ -n "$color" ] && printf -- "%s" $'\e[0m' # Reset color
+	# Print the current date/time + status message
+	# Don't use multiple 'printf' statements (separate color and status message 'printf').
+	# This can lead to a race condition, where $color is set and then output from a job starts.
+	if [ -n "$color" ]; then
+		printf -- "%s%($TIME_FORMAT)T %s%s\n" "$color" -1 "$1" $'\e[0m'
+	else
+		printf -- "%($TIME_FORMAT)T %s\n" -1 "$1"
+	fi
 
 	return 0
 }
