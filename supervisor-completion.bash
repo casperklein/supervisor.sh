@@ -3,7 +3,7 @@ _supervisor_sh() {
 	local prev=${COMP_WORDS[COMP_CWORD-1]}
 	local prev2=${COMP_WORDS[COMP_CWORD-2]}
 
-	local options="-c --config -h --help -n --no-color -v --version"
+	local options="-c --config -l --lint -h --help -n --no-color -v --version"
 	local commands="start stop restart status fix log logs convert"
 	local args="$options $commands"
 

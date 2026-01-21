@@ -27,10 +27,12 @@ COLOR=""
 NO_COLOR=0
 CONFIG_FILE_BASH=0
 FOREGROUND=0
+LINT=0
+NO_COLOR=0
 PIDS=()
 TIME_FORMAT="%F %T" # Default value for CLI commands where config is not read, e.g. 'supervisor.sh stop'
 
-# Set default configuration path
+# Set default config path
 if hash yq 2>/dev/null; then
 	CONFIG_FILE="/etc/supervisor.yaml"
 else
@@ -60,6 +62,7 @@ _usage() {
 
 		Options:
 		  -c, --config     Specify configuration file, e.g. '$APP -c /path/config.yaml'.
+		  -l, --lint       Validate and display the full configuration, including implicit default values.
 		  -h, --help       Show this help.
 		  -n, --no-color   Disable color usage.
 		  -v, --version    Show version.
@@ -126,6 +129,8 @@ _read_config_file() {
 		exit 1
 	fi >&2
 
+	# Read config from file
+
 	# mapfile -t --> Remove a trailing DELIM from each line read (default newline)
 	# yq -r      --> unwrap scalar, print the value with no quotes, colors or comments
 
@@ -147,14 +152,28 @@ _read_config_file() {
 	mapfile -t JOB_RESTART_LIMIT < <(yq -r '.jobs[].restart_limit  // "3"'             "$CONFIG_FILE")
 	declare -A JOB_RESTART_COUNT
 
+	# Validate config
+
+	__show_error_and_exit() {
+		echo "Error: $1"
+		echo "Check: $CONFIG_FILE"
+		echo
+		_show_config
+		echo
+		exit 1
+	} >&2
+
+	# Any jobs configured?
+	if [[ "${#JOB_NAME[@]}" -eq 1 && -z "${JOB_NAME[0]}" ]]; then
+		__show_error_and_exit "No jobs configured."
+	fi
+
 	# Check required job keys
 	local i
 	for i in "${!JOB_NAME[@]}"; do
 		if [[ -z "${JOB_NAME[i]}" || -z "${JOB_COMMAND[i]}" ]]; then
-			echo "Error: Parsing job #$((++i)) configuration failed. The 'name' or 'command' key cannot be empty/missing. Check: $CONFIG_FILE"
-			echo
-			exit 1
-		fi >&2
+			__show_error_and_exit "Parsing job #$((++i)) configuration failed. The 'name' or 'command' key cannot be empty/missing."
+		fi
 	done
 
 	# JOB_NAME must be uniq
@@ -163,30 +182,87 @@ _read_config_file() {
 	for i in "${JOB_NAME[@]}"; do
 		((++j))
 		if [ -n "${job_name_uniq[$i]:-}" ]; then
-			echo "Error: Parsing job #$j configuration failed. Job #${job_name_uniq[$i]} is already named '$i'. Check: $CONFIG_FILE"
-			echo
-			exit 1
+			__show_error_and_exit "Invalid job #$j name. Job #${job_name_uniq[$i]} is already named '$i'."
 		else
 			job_name_uniq[$i]=$j
-		fi >&2
+		fi
 	done
 
 	__is_integer() {
-		# $1   Value
-		# $2   Display name
+		# $1   Description
+		# $2   Value
 
-		if ! [[ "$1" =~ ^[0-9]+$ ]]; then
-			echo "Error: $2 in $CONFIG_FILE must be an integer >= 0. Current value is: $1"
-			echo
-			exit 1
-		fi >&2
+		if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+			__show_error_and_exit "$1 must be an integer >= 0. Current value is: $2"
+		fi
 	}
 
-	# Validate values
-	__is_integer "$SIGTERM_GRACE_PERIOD" "'sigterm_grace_period'"
+	__is_integer "supervisor key 'sigterm_grace_period'" "$SIGTERM_GRACE_PERIOD"
 
 	for i in "${!JOB_RESTART_LIMIT[@]}"; do
-		__is_integer "${JOB_RESTART_LIMIT[i]}" "Job #$((++i)) 'restart_limit'"
+		__is_integer "Job #$(( i + 1 )) 'restart_limit'" "${JOB_RESTART_LIMIT[i]}"
+	done
+
+	__has_valid_value() {
+		local description value allowed
+
+		description=$1
+		value=$2
+		shift 2
+		allowed=("$@")
+
+		for i in "${allowed[@]}"; do
+			[ "$value" == "$i" ] && return 0
+		done
+
+		__show_error_and_exit "$description has an invalid value '$value'. Possible values: $*"
+	}
+
+	__has_valid_value "supervisor key 'keep_running'" "$KEEP_RUNNING" on off
+
+	for i in "${!JOB_AUTOSTART[@]}"; do
+		__has_valid_value "Job #$(( i + 1 )) key 'autostart'" "${JOB_AUTOSTART[i]}" on off
+	done
+
+	for i in "${!JOB_RESTART[@]}"; do
+		__has_valid_value "Job #$(( i + 1 )) key 'restart'" "${JOB_RESTART[i]}" error on off
+	done
+
+	for i in "${!JOB_REQUIRED[@]}"; do
+		__has_valid_value "Job #$(( i + 1 )) key 'required'" "${JOB_REQUIRED[i]}" yes no
+	done
+}
+
+_show_config() {
+	local color color_error
+	# Escape ANSI colors
+	color=$(      printf -- '%q' "$COLOR")
+	color_error=$(printf -- '%q' "$COLOR_ERROR")
+
+	cat <<-CONFIG
+		supervisor:
+		  logfile: $LOG_FILE
+		  sigterm_grace_period: $SIGTERM_GRACE_PERIOD
+		  keep_running: $KEEP_RUNNING
+		  color: ${color:2:-1}
+		  color_error: ${color_error:2:-1}
+		  time_format: $TIME_FORMAT
+
+		jobs:
+	CONFIG
+
+	for i in "${!JOB_NAME[@]}"; do
+		cat <<-CONFIG
+		  # Job $(( i + 1 ))"
+		  - name: ${JOB_NAME[i]}
+		    command: ${JOB_COMMAND[i]}
+		    autostart: ${JOB_AUTOSTART[i]}
+		    logfile: ${JOB_LOGFILE[i]}
+		    restart: ${JOB_RESTART[i]}
+		    restart_limit: ${JOB_RESTART_LIMIT[i]}
+		    required: ${JOB_REQUIRED[i]}
+
+		CONFIG
 	done
 }
 
@@ -641,6 +717,11 @@ while [[ "${1:-}" == -* ]]; do
 			shift 2
 			;;
 
+		-l|--lint)
+			LINT=1
+			shift
+			;;
+
 		-n|--no-color)
 			NO_COLOR=1
 			shift
@@ -667,6 +748,15 @@ while [[ "${1:-}" == -* ]]; do
 			exit 1
 	esac
 done
+
+# Check and print config
+if (( LINT == 1 )); then
+	_read_config_file
+	echo "Configuration is valid."
+	echo
+	_show_config
+	exit 0
+fi
 
 # Some commands don’t require the config file, e.g. status / start <job> / stop
 if ! [[ "${1:-}" == "status" || "${1:-}" == "start" && -n "${2:-}" || "${1:-}" == "stop" && -z "${2:-}" ]]; then

@@ -57,6 +57,7 @@ Configuration file:
 
 Options:
   -c, --config     Specify configuration file, e.g. 'supervisor.sh -c /path/config.yaml'.
+  -l, --lint       Validate and display the full configuration, including implicit default values.
   -h, --help       Show this help.
   -n, --no-color   Disable color usage.
   -v, --version    Show version.
