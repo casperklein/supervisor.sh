@@ -406,10 +406,7 @@ _stop_app_cli() {
 }
 
 _stop_app() {
-	# Shutdown is now in progress. Ignore further INT/TERM signals.
-	trap "" SIGINT SIGTERM
-
-	# Signal to CLI commands (e.g. 'supervisor.sh stop') that the shutdown is in progress
+	# Create marker file to indicate that a shutdown is in progress
 	: >"$PID_DIR/.sigterm"
 
 	_status "Stopping $APP ($$)"
@@ -418,9 +415,6 @@ _stop_app() {
 		# Send SIGTERM to all job process groups
 		kill -SIGTERM "${PIDS[@]/#/-}" 2>/dev/null || true
 	fi
-
-	# Trigger _clean_up()
-	exit 0
 }
 
 _show_process_status_table() {
@@ -645,7 +639,7 @@ _stop_job_cli() {
 
 			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD}s before sending SIGKILL."
 
-			# Wait until job has stopped
+			# Wait until job has terminated
 			while kill -0 -"$job_pid" 2>/dev/null; do
 				if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
 					_status "Job is still running, sending SIGKILL: $name ($job_pid)"
@@ -679,8 +673,8 @@ _set_job_state() {
 		stop)
 			# Let supervisor know, that the job is stopped on purpose.
 			# This is important
-			# - if a job is stopped and configured with 'required: yes'
-			# - if a job is stopped and configured with 'restart: on'
+			# - if a job terminates and is configured with 'required: yes'
+			# - if a job terminates and is configured with 'restart: on'
 			# The marker below ensures that supervisor takes no action in these cases.
 			: >"$job_file.pid.stop"
 			;;
@@ -939,7 +933,11 @@ if [ "$1" != "--daemon" ]; then
 	exit 0
 fi
 
-_clean_up() {
+_terminate() {
+	# Termination is now in progress. Disable traps to prevent possible loops
+	trap "" SIGHUP SIGINT SIGTERM EXIT
+
+	# Calculate total runtime
 	__total_runtime() {
 		local total=$SECONDS
 		local days=$((   total / 86400         ))
@@ -954,6 +952,29 @@ _clean_up() {
     		echo "$output"
 	}
 
+	local signal=${1:-}
+
+	# Unexpected termination (unknown signal or error)
+	# 'kill -0' does not work reliably after receiving a signal without a trap handler, e.g. SIGSEGV.
+	# Child processes can turn into zombies and are treated as still running.
+	# Stop supervisor and jobs in a generic way without job monitoring.
+	# This will mostly take longer, because the full grace period is used
+	# and supervisor will not exit early if the jobs terminate faster.
+	if [ -z "$signal" ]; then
+		_status "Error: Unexpected termination" ERROR
+		_stop_app
+		_status "Waiting $SIGTERM_GRACE_PERIOD seconds for job termination"
+		sleep "$SIGTERM_GRACE_PERIOD"
+		kill -SIGKILL "${PIDS[@]/#/-}" 2>/dev/null || true
+		_delete_runtime_files
+		_status "$APP ($$) terminated after $(__total_runtime)"
+		exit 1
+	fi
+
+	[ "$signal" != "NO_SIGNAL" ] && _status "$signal signal received."
+
+	_stop_app
+
 	local i grace_period_start=$SECONDS last_wait_info=$SECONDS
 
 	__wait_info() {
@@ -963,13 +984,13 @@ _clean_up() {
 		done
 		if [ -n "${wait_jobs:-}" ]; then
 			seconds_until_sigkill=$(( SIGTERM_GRACE_PERIOD + grace_period_start - SECONDS ))
-			(( seconds_until_sigkill > 0 )) && _status "Waiting ${seconds_until_sigkill} seconds for job termination: ${wait_jobs:0:-2}"
+			(( seconds_until_sigkill > 0 )) && _status "Waiting $seconds_until_sigkill seconds for job termination: ${wait_jobs:0:-2}"
 		fi
 		return 0
 	}
 	__wait_info
 
-	# Wait until all jobs are stopped
+	# Wait until all jobs have terminated
 	while :; do
 		for i in "${!PIDS[@]}"; do
 			if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stopped" ]; then
@@ -988,7 +1009,7 @@ _clean_up() {
 			fi
 		done
 
-		# Are all jobs stopped?
+		# Are all jobs terminated?
 		if (( ${#PIDS[@]} == 0 )); then
 			break
 		fi
@@ -1007,9 +1028,12 @@ _clean_up() {
 	_status "$APP ($$) terminated after $(__total_runtime)"
 	exit 0
 }
-trap "      _clean_up" EXIT
-trap "echo; _stop_app" SIGINT
-trap "      _stop_app" SIGTERM
+
+# Set signal handlers
+trap "      _terminate     " EXIT    # Unexpected signals and errors
+trap "      _terminate HUP " SIGHUP  # Stop supervisor when receiving SIGHUP
+trap "echo; _terminate INT " SIGINT  # Stop supervisor when receiving SIGINT
+trap "      _terminate TERM" SIGTERM # Stop supervisor when receiving SIGTERM
 
 # Running as daemon?
 if (( FOREGROUND == 0 )); then
@@ -1113,12 +1137,13 @@ _kill_process_group() {
 
 _exit_app_if_job_is_required() {
 	local i=$1
-	# Stop the supervisor if a required job has stopped
+
+	# Stop supervisor if a required job has terminated
 	if [ "${JOB_REQUIRED[i]}" == "yes" ]; then
 		# Keep running, if the job was stopped on purpose (via the 'stop' command)
 		if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
-			_status "Required job stopped: ${JOB_NAME[i]}" ERROR
-			_stop_app
+			_status "Required job terminated: ${JOB_NAME[i]}" ERROR
+			_terminate NO_SIGNAL
 		fi
 	fi
 }
