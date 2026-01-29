@@ -1169,8 +1169,8 @@ while :; do
 		if (( ${#PIDS[@]} == 0 )); then
 			# Only supervisor is running
 			if [ "$KEEP_RUNNING" == "off" ]; then
-				_status "No more jobs are running. Stopping $APP"
-				exit 0
+				_status "No more jobs are running"
+				_terminate NO_SIGNAL
 			else
 				sleep 1
 				continue
