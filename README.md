@@ -57,7 +57,6 @@ Configuration file:
 
 Options:
   -c, --config     Specify configuration file, e.g. 'supervisor.sh -c /path/config.yaml'.
-  -l, --lint       Validate and display the full configuration, including implicit default values.
   -h, --help       Show this help.
   -n, --no-color   Disable color usage.
   -v, --version    Show version.
@@ -71,6 +70,7 @@ Commands:
   restart <job>    Restart job.
   status           Show process states.
   fix              Fix unclean shutdown.
+  lint             Validate and display the full configuration, including implicit default values.
   log              Show continuously the supervisor.sh log (only for daemon mode)
   logs             Show continuously the supervisor.sh log + job logs.
   convert          Convert the YAML configuration file to Bash. This allows the

@@ -25,7 +25,6 @@ PID_FILE="$PID_DIR/$APP.pid"
 
 CONFIG_FILE_BASH=0
 FOREGROUND=0
-LINT=0
 NO_COLOR=0
 PIDS=()
 TIME_FORMAT="%F %T" # Default value for CLI commands where config is not read, e.g. 'supervisor.sh stop'
@@ -60,7 +59,6 @@ _usage() {
 
 		Options:
 		  -c, --config     Specify configuration file, e.g. '$APP -c /path/config.yaml'.
-		  -l, --lint       Validate and display the full configuration, including implicit default values.
 		  -h, --help       Show this help.
 		  -n, --no-color   Disable color usage.
 		  -v, --version    Show version.
@@ -74,6 +72,7 @@ _usage() {
 		  restart <job>    Restart job.
 		  status           Show process status table.
 		  fix              Fix unclean shutdown.
+		  lint             Validate and display the full configuration, including implicit default values.
 		  log              Show continuously the $APP log.
 		  logs             Show continuously the $APP log + job logs.
 		  convert          Convert the YAML configuration file to Bash. This allows the
@@ -711,11 +710,6 @@ while [[ "${1:-}" == -* ]]; do
 			shift 2
 			;;
 
-		-l|--lint)
-			LINT=1
-			shift
-			;;
-
 		-n|--no-color)
 			NO_COLOR=1
 			shift
@@ -743,17 +737,13 @@ while [[ "${1:-}" == -* ]]; do
 	esac
 done
 
-# Check and print config
-if (( LINT == 1 )); then
-	_read_config_file
-	echo "Configuration is valid."
-	echo
-	_show_config
-	exit 0
-fi
-
-# Some commands don’t require the config file, e.g. status / start <job> / stop
-if ! [[ "${1:-}" == "status" || "${1:-}" == "start" && -n "${2:-}" || "${1:-}" == "stop" && -z "${2:-}" ]]; then
+# Some commands don’t require the config file, e.g. status / start <job> / stop / lint
+if ! [[
+	"${1:-}" == "status"               ||
+	"${1:-}" == "start" && -n "${2:-}" ||
+	"${1:-}" == "stop" && -z "${2:-}"  ||
+	"${1:-}" == "lint"
+]]; then
 	_read_config_file
 fi
 
@@ -772,6 +762,15 @@ fi >&2
 
 # Get command
 case "${1:-}" in
+	lint)
+		# Check and print config
+		_read_config_file
+		echo "Configuration is valid."
+		echo
+		_show_config
+		exit 0
+		;;
+
 	fix)    _fix_unclean_shutdown; exit ;;
 
 	status) _show_process_status_table; exit ;;
