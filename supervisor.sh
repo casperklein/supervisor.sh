@@ -1185,14 +1185,15 @@ while :; do
 
 	for i in "${!PIDS[@]}"; do
 		if [ "${PIDS[i]}" == "$JOB_PID" ]; then
-			if [ -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
-				_status "Job termination is expected: ${JOB_NAME[i]} (${PIDS[i]})"
-			fi
-
 			if [[ $JOB_EXIT_CODE -gt 0 && ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
 				_status "Job failed with exit code $JOB_EXIT_CODE: ${JOB_NAME[i]} (${PIDS[i]})" ERROR
 			else
-				_status "Job terminated: ${JOB_NAME[i]} (${PIDS[i]})"
+				if [ -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
+					# Job was stopped via 'supervisor.sh stop <job>'
+					_status "Job terminated (expected): ${JOB_NAME[i]} (${PIDS[i]})"
+				else
+					_status "Job terminated: ${JOB_NAME[i]} (${PIDS[i]})"
+				fi
 			fi
 
 			_clean_up_job "$i"
@@ -1205,6 +1206,7 @@ while :; do
 					if (( JOB_RESTART_LIMIT[i] == 0 || JOB_RESTART_COUNT[i] < JOB_RESTART_LIMIT[i] )); then
 						(( ++JOB_RESTART_COUNT[i] ))
 						if (( JOB_RESTART_LIMIT[i] == 0 )); then
+							# No restart limit
 							_status "Restarting (${JOB_RESTART_COUNT[i]}): ${JOB_NAME[i]}"
 						else
 							_status "Restarting (${JOB_RESTART_COUNT[i]}/${JOB_RESTART_LIMIT[i]}): ${JOB_NAME[i]}"
