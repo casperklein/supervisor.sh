@@ -737,8 +737,9 @@ while [[ "${1:-}" == -* ]]; do
 	esac
 done
 
-# Some commands don’t require the config file, e.g. status / start <job> / stop / lint
+# Read config
 if ! [[
+	# Some commands don’t require the config file, e.g. status / start <job> / stop / lint
 	"${1:-}" == "status"               ||
 	"${1:-}" == "start" && -n "${2:-}" ||
 	"${1:-}" == "stop" && -z "${2:-}"  ||
@@ -752,13 +753,6 @@ if (( NO_COLOR == 1 )); then
 	COLOR=""
 	COLOR_ERROR=""
 fi
-
-# shellcheck disable=SC2174
-if ! mkdir -m 700 -p "$PID_DIR" 2>/dev/null; then
-	echo "Error: PID directory '$PID_DIR' could not be created. Check permissions."
-	echo
-	exit 1
-fi >&2
 
 # Get command
 case "${1:-}" in
@@ -903,6 +897,8 @@ case "${1:-}" in
 		;;
 esac
 
+# Begin server only part
+
 # Bash version >= 5.1 ?
 if ! (( BASH_VERSINFO[0] > 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 1) )); then
 	echo "Error: Bash 5.1 or later is required to run $APP"
@@ -910,7 +906,12 @@ if ! (( BASH_VERSINFO[0] > 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 1)
 	exit 1
 fi >&2
 
-# Begin server only part
+# shellcheck disable=SC2174
+if ! mkdir -m 700 -p "$PID_DIR" 2>/dev/null; then
+	echo "Error: PID directory '$PID_DIR' could not be created. Check permissions."
+	echo
+	exit 1
+fi >&2
 
 # Run as daemon
 if [ "$1" != "--daemon" ]; then
