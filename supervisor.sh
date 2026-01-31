@@ -20,7 +20,7 @@ APP="supervisor.sh"
 APP_PATH=$(readlink -f "$0")
 VER=0.12
 
-: "${PID_DIR:=/run/$APP}" # Allow override via ENV
+: "${PID_DIR:=/run/$APP}" # Allow PID_DIR override via ENV
 PID_FILE="$PID_DIR/$APP.pid"
 
 CONFIG_FILE_BASH=0
@@ -75,8 +75,8 @@ _usage() {
 		  lint             Validate and display the full configuration, including implicit default values.
 		  log              Show continuously the $APP log.
 		  logs             Show continuously the $APP log + job logs.
-		  convert          Convert the YAML configuration file to Bash. This allows the
-		                   usage without the 'yq' dependency.
+		  convert          Convert the YAML configuration file to Bash.
+		                   This allows the usage without the 'yq' dependency.
 
 		If no command is provided, $APP will start in foreground.
 

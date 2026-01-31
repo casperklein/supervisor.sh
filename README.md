@@ -73,8 +73,8 @@ Commands:
   lint             Validate and display the full configuration, including implicit default values.
   log              Show continuously the supervisor.sh log (only for daemon mode)
   logs             Show continuously the supervisor.sh log + job logs.
-  convert          Convert the YAML configuration file to Bash. This allows the
-                   usage without the 'yq' dependency.
+  convert          Convert the YAML configuration file to Bash.
+                   This allows the usage without the 'yq' dependency.
 
 If no command is provided, supervisor.sh will start in foreground.
 ```
