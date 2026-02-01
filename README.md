@@ -8,15 +8,15 @@
 ## Description
 
 `supervisor.sh` is a process supervisor inspired by [Supervisord](https://supervisord.org/) written in Bash.
-It's a lightweight _pure_ Bash solution, providing basic functionality to supervise processes (called jobs). The configuration is done in a YAML configuration file. By default, all jobs are automatically started and in case of an error (exit code > 0) restarted.
+It's a lightweight _almost pure_ Bash solution, providing basic functionality to supervise processes (called jobs). The configuration is done in a YAML configuration file. By default, all jobs are automatically started and, in case of an error (exit code > 0), restarted.
 
-For environments like Docker container, where minimal overhead is desired, the dependency on `yq` can be removed by converting the YAML configuration to Bash.
+For environments like a Docker container, where minimal overhead is desired, the dependency on `yq` can be removed by converting the YAML configuration to Bash.
 
 ### Foreground mode
 
 Without the explicit `start` command, `supervisor.sh` runs in the foreground. It can be stopped by:
 
-1. Pressing CTRL-C, which is equivalent to the SIGINT signal.
+1. Pressing CTRL-C.
 2. Running `supervisor.sh stop` in another session.
 
 ### Daemon mode
@@ -88,10 +88,10 @@ By default, the configuration is read from `/etc/supervisor.yaml`. You can speci
 Key                    | Required | Default           | Possible Values   | Description
 -----------------------|----------|-------------------|-------------------|------------------------------------------------------------------------------------------------
 `logfile`              | No       | `/dev/stdout`     | Valid file path   | Log file for supervisor output (only for daemon mode)
-`sigterm_grace_period` | No       | `10`              | Any number        | Grace period in seconds until SIGKILL is send to processes that keeps running after SIGTERM.
+`sigterm_grace_period` | No       | `10`              | Any number        | Grace period in seconds until SIGKILL is sent to processes that keeps running after SIGTERM.
 `keep_running`         | No       | `off`             | `on`, `off`       | Exit supervisor when all jobs are stopped (`off`) or keep running (`on`).
-`color`                | No       |                   | `\e[0;34m` (blue) | Text color defined as [escape sequence](https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124) for terminal colors (only for forground mode).
-`color_error`          | No       | `\e[1;31m]` (red) | `\e[0;32m` (green)| Text color for errors defined as [escape sequence](https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124) for terminal colors (only for forground mode).
+`color`                | No       |                   | `\e[0;34m` (blue) | Text color defined as [escape sequence](https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124) for terminal colors (only foreground mode).
+`color_error`          | No       | `\e[1;31m]` (red) | `\e[0;32m` (green)| Text color for errors defined as [escape sequence](https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124) for terminal colors (only foreground mode).
 `time_format`          | No       | `%F %T`           | `strftime` format | Time format that is used for status messages. See [`strftime`](https://linux.die.net/man/3/strftime) for possible values.
 
 ### jobs
@@ -104,7 +104,7 @@ Key             | Required | Default       | Possible Values      | Description
 `logfile`       | No       | `/dev/stdout` | Valid file path      | Write output to log file.
 `restart`       | No       | `error`       | `error`, `on`, `off` | Restart the job if it exits, only on failure (`error`) or always (`on`) or never (`off`).
 `restart_limit` | No       | `3`           | Any positive integer | Restart the job only n times. Set 0 for unlimited restarts.
-`required`      | No       | `no`          | `no`, `yes`          | When a required job stops, all remaining jobs and the supervisor are stopped as well.
+`required`      | No       | `no`          | `no`, `yes`          | When a required job terminates, all remaining jobs and `supervisor.sh` are stopped as well.
 
 ## Example
 
@@ -161,6 +161,34 @@ supervisor.sh -c /etc/supervisor.yaml.sh <command>
 ```bash
 docker run --rm -v "${PWD}":/workdir -u root --entrypoint /bin/sh mikefarah/yq -c "apk add bash; bash -c './supervisor.sh -c supervisor.yaml convert'"
 ```
+
+## Demo / Tests
+
+To see `supervisor.sh` in action, you can run `tests/run-tests.sh`. This will:
+
+- Run some `yq` tests
+- Print system environment information
+- Start `supervisor.sh` with an [example](https://github.com/casperklein/supervisor.sh/blob/master/tests/supervisor.yaml) configuration.
+
+This includes 4 jobs:
+
+1. parent.sh: A simple bash script that starts a child process (`child.sh`) and then does nothing. When the TERM signal is received, the script terminates. When `child.sh` receives the TERM signal, it will be ignored. When `supervisor.sh` stops this job, it takes care, that the whole process group has terminated. Since child.sh ignores the TERM signal, the process will be killed (SIGKILL) after a grace period.
+
+2. fail.sh: A simple bash script, that fails after 3 seconds. This job will be restarted 2 times on failure. On the third failure, `supervisor.sh` terminates, because the job is configured as _required_.
+
+3. sleep: This job just sleeps for 1 day.
+
+4. prefix: This jobs demonstrated, how to prefix a job output with the current date/time (this can easily match the `time_format` that `supervisor.sh` uses).
+
+## Custom PID directory
+
+By default, `/run/supervisor.sh` is used for storing files needed at runtime. To use another location, you can set the environment variable `PID_DIR`.
+
+```bash
+PID_DIR=/home/alice/supervisor.sh supervisor.sh start
+```
+
+This is useful when `supervisor.sh` runs rootless.
 
 ## Used by these projects
 
