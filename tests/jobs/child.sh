@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
-# Ignore SIGTERM
-trap 'echo "Child: SIGTERM received."' SIGTERM
+# Ignore TERM signal
+_sigterm() {
+	# Print current date/time + message
+	printf -- "%(%F  %T)T  %s\n" -1 "Child process of parent.sh:  TERM signal received. Ignoring.."
+}
+trap _sigterm SIGTERM
 
 # Keep alive
 while :; do

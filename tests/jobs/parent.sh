@@ -2,7 +2,8 @@
 
 # Terminate gracefully
 _sigterm() {
-	echo "Parent: SIGTERM received. Terminating.."
+	# Print current date/time + message
+	printf -- "%(%F  %T)T  %s\n" -1 "parent.sh: TERM signal received. Terminating.."
 	exit
 }
 trap _sigterm SIGTERM

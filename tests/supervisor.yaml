@@ -4,10 +4,26 @@ supervisor:
   # color_error: "\e[0;33m" # yellow text color
   # logfile: /doesnotexist/supervisor.log
   logfile: /tmp/supervisor.log
+  keep_running: "off"
+  time_format: "%F  %T "
 
 jobs:
   - name: "parent.sh"
     command: "parent.sh" # The child is not behaving and ignores SIGTERM
+
+  # Prefix the job output with the current date/time
+  - name: "prefix"
+    # Ignoring SIGTERM via 'trap' is needed, to ensure that the last output on termination is also processed.
+    # Otherwise the second sub-shell could terminate before the first.
+
+    # Using 'ts' command (if available)
+    # command: (echo "This job output is prefixed with the current date/time"; sleep 1; echo "Another line") | (trap '' SIGTERM; ts '%F  %T ') # Does not work if 'ts' command is not available
+
+    # Using Bash
+    # command: (echo "This job output is prefixed with the current date/time"; sleep 1; echo "Another line") | (trap '' SIGTERM; while IFS= read -r line; do printf -- '%(%F  %T)T  %s\n' -1 "$line"; done)
+
+    # Using Bash helper script
+    command: (echo "This job output is prefixed with the current date/time"; sleep 1; echo "Another line") | helper-prefix.sh
 
   - name: "fail.sh"
     command: "fail.sh"
@@ -16,3 +32,7 @@ jobs:
 
   - name: "sleep"
     command: "sleep 1d"
+
+  # - name: stop-test
+  #   # Send TERM signal to supervisor
+  #   command: "sleep 4; supervisor.sh stop >/dev/null"
