@@ -164,7 +164,9 @@ docker run --rm -v "${PWD}":/workdir -u root --entrypoint /bin/sh mikefarah/yq -
 
 ## Demo / Tests
 
-To see `supervisor.sh` in action, you can run `tests/run-tests.sh`. This will:
+See `supervisor.sh` in action [here](assets/demo.gif) and [here](assets/demo-docker.gif).
+
+You can also run the demo locally using `tests/run-tests.sh` or `tests/run-tests-docker.sh`. This will:
 
 - Run some `yq` tests
 - Print system environment information
