@@ -34,7 +34,7 @@ The `yq` dependency can be removed. See [below](#run-without-the-yq-dependency).
 ## Installation
 
 ```bash
-SV_VERSION=latest
+SV_VERSION=0.13
 
 # Supervisor
 curl -sSLf -o /usr/bin/supervisor.sh "https://raw.githubusercontent.com/casperklein/supervisor.sh/refs/tags/$SV_VERSION/supervisor.sh"
