@@ -1095,19 +1095,18 @@ _start_job_trap() {
 		name=${name##*/}
 		name=${name:0:-10}
 
-		# Search job
+		# Search and start jobs
 		for i in "${!JOB_NAME[@]}"; do
 			if [ "${JOB_NAME[i]}" == "$name" ]; then
 				# (Re)set restart count
 				JOB_RESTART_COUNT[i]=0
-
 				_start_job "$i"
-				# break 2
 			fi
 		done
 	done
 }
-# Listen for USR1 signal
+
+# Set signal handler for SIGUSR1
 trap _start_job_trap SIGUSR1
 
 # Kill a process group
