@@ -126,6 +126,15 @@ _read_config_file() {
 		exit 1
 	fi >&2
 
+	# Validate config file
+	local output
+	if ! output=$(yq . "$CONFIG_FILE" 2>&1); then
+		echo "Error: The configuration file is invalid."
+		echo "$output"
+		echo
+		exit 1
+	fi >&2
+
 	# Read config from file
 
 	# mapfile -t --> Remove a trailing DELIM from each line read (default newline)
