@@ -259,10 +259,19 @@ _read_config_file() {
 }
 
 _show_config() {
-	local color color_error
+	local color="" color_error=""
+
 	# Escape ANSI colors
-	color=$(      printf -- '%q' "$COLOR")
-	color_error=$(printf -- '%q' "$COLOR_ERROR")
+	[ -n "$COLOR"       ] && printf -v color       -- '%q' "$COLOR"
+	[ -n "$COLOR_ERROR" ] && printf -v color_error -- '%q' "$COLOR_ERROR"
+
+	# Remove surrounding: $''
+	[[ "$color"       == '$'\'*\' ]] && color=${color:2:-1}
+	[[ "$color_error" == '$'\'*\' ]] && color_error=${color_error:2:-1}
+
+	# \E --> \e
+	color=${color//\\E/\\e}
+	color_error=${color_error//\\E/\\e}
 
 	cat <<-CONFIG
 		supervisor:
