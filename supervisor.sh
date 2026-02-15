@@ -194,6 +194,16 @@ _read_config_file() {
 		fi
 	done
 
+	# Validate optional settings
+
+	# COLOR / COLOR_ERROR can be empty or must contain an escape sequence
+	if [[ -n "$COLOR"       && "$COLOR"       != *$'\e'* ]]; then
+		__show_error_and_exit "supervisor.color does not contain an ansi color escape sequence. Current value is: $COLOR"
+	fi
+	if [[ -n "$COLOR_ERROR" && "$COLOR_ERROR" != *$'\e'* ]]; then
+		__show_error_and_exit "supervisor.color_error does not contain an ansi color escape sequence. Current value is: $COLOR_ERROR"
+	fi
+
 	__is_integer() {
 		# $1   Description
 		# $2   Value
