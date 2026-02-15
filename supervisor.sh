@@ -222,7 +222,7 @@ _read_config_file() {
 		fi
 	}
 
-	__is_integer "supervisor key 'sigterm_grace_period'" "$SIGTERM_GRACE_PERIOD"
+	__is_integer "supervisor.sigterm_grace_period" "$SIGTERM_GRACE_PERIOD"
 
 	for i in "${!JOB_RESTART_LIMIT[@]}"; do
 		__is_integer "Job #$(( i + 1 )) 'restart_limit'" "${JOB_RESTART_LIMIT[i]}"
@@ -243,18 +243,18 @@ _read_config_file() {
 		__show_error_and_exit "$description has an invalid value '$value'. Possible values: $*"
 	}
 
-	__has_valid_value "supervisor key 'keep_running'" "$KEEP_RUNNING" on off
+	__has_valid_value "supervisor.keep_running" "$KEEP_RUNNING" on off
 
 	for i in "${!JOB_AUTOSTART[@]}"; do
-		__has_valid_value "Job #$(( i + 1 )) key 'autostart'" "${JOB_AUTOSTART[i]}" on off
+		__has_valid_value "Job #$(( i + 1 )) 'autostart'" "${JOB_AUTOSTART[i]}" on off
 	done
 
 	for i in "${!JOB_RESTART[@]}"; do
-		__has_valid_value "Job #$(( i + 1 )) key 'restart'" "${JOB_RESTART[i]}" error on off
+		__has_valid_value "Job #$(( i + 1 )) 'restart'" "${JOB_RESTART[i]}" error on off
 	done
 
 	for i in "${!JOB_REQUIRED[@]}"; do
-		__has_valid_value "Job #$(( i + 1 )) key 'required'" "${JOB_REQUIRED[i]}" yes no
+		__has_valid_value "Job #$(( i + 1 )) 'required'" "${JOB_REQUIRED[i]}" yes no
 	done
 }
 
