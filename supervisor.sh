@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# shellcheck disable=2178,2128 # shellcheck bug
-
 # Dependencies: yq, bash >= 5.1
 # Bash 5.1 or later is required to support 'wait -p'
 
 # Also these common core utilities are required: cat mkdir readlink rm setsid sleep tail
 
 # Source: https://github.com/casperklein/supervisor.sh/
+
+# shellcheck disable=2178,2128 # Bug: https://github.com/koalaman/shellcheck/issues/1309
 
 # Shell options
 set   -o errexit         # Exit immediately if a command exits with a non-zero status
