@@ -174,15 +174,24 @@ _read_config_file() {
 		__show_error_and_exit "No jobs configured."
 	fi
 
-	# Check required job keys
+	# Validate job names and commands
 	local i
 	for i in "${!JOB_NAME[@]}"; do
+		# Job name and command cannot be empty/missing
 		if [[ -z "${JOB_NAME[i]}" || -z "${JOB_COMMAND[i]}" ]]; then
-			__show_error_and_exit "Parsing job #$((++i)) configuration failed. The 'name' or 'command' key cannot be empty/missing."
+			__show_error_and_exit "Parsing job #$((++i)) configuration failed. The 'name' or 'command' value cannot be empty/missing."
+		fi
+
+		# Prevent problematic job (file) names
+		# 1. Dotfiles are excluded from globbing (*.pid)
+		# 2. A filename cannot contain a slash
+		# 3. Whitespaces in job names do not work with bash completion
+		if [[ ! "${JOB_NAME[i]}" =~ ^[^./[:space:]][^/[:space:]]*$ ]]; then
+			__show_error_and_exit "Parsing job #$((++i)) configuration failed. The job name must not start with a dot and must not contain whitespace or slashes."
 		fi
 	done
 
-	# JOB_NAME must be uniq
+	# The job name must be uniq
 	declare -A job_name_uniq
 	local j=0
 	for i in "${JOB_NAME[@]}"; do
