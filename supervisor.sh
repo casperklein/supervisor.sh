@@ -275,12 +275,12 @@ _show_config() {
 
 	cat <<-CONFIG
 		supervisor:
-		  logfile: $LOG_FILE
-		  sigterm_grace_period: $SIGTERM_GRACE_PERIOD
-		  keep_running: $KEEP_RUNNING
-		  color: ${color:2:-1}
-		  color_error: ${color_error:2:-1}
-		  time_format: $TIME_FORMAT
+		  logfile: "$LOG_FILE"
+		  sigterm_grace_period: "$SIGTERM_GRACE_PERIOD"
+		  keep_running: "$KEEP_RUNNING"
+		  color: "$color"
+		  color_error: "$color_error"
+		  time_format: "$TIME_FORMAT"
 
 		jobs:
 	CONFIG
@@ -288,13 +288,13 @@ _show_config() {
 	for i in "${!JOB_NAME[@]}"; do
 		cat <<-CONFIG
 		  # Job $(( i + 1 ))"
-		  - name: ${JOB_NAME[i]}
+		  - name: "${JOB_NAME[i]}"
 		    command: ${JOB_COMMAND[i]}
-		    autostart: ${JOB_AUTOSTART[i]}
-		    logfile: ${JOB_LOGFILE[i]}
-		    restart: ${JOB_RESTART[i]}
-		    restart_limit: ${JOB_RESTART_LIMIT[i]}
-		    required: ${JOB_REQUIRED[i]}
+		    autostart: "${JOB_AUTOSTART[i]}"
+		    logfile: "${JOB_LOGFILE[i]}"
+		    restart: "${JOB_RESTART[i]}"
+		    restart_limit: "${JOB_RESTART_LIMIT[i]}"
+		    required: "${JOB_REQUIRED[i]}"
 
 		CONFIG
 	done

@@ -85,14 +85,14 @@ By default, the configuration is read from `/etc/supervisor.yaml`. You can speci
 
 ### supervisor
 
-Key                    | Required | Default           | Possible Values   | Description
------------------------|----------|-------------------|-------------------|------------------------------------------------------------------------------------------------
-`logfile`              | No       | `/dev/stdout`     | Valid file path   | Log file for supervisor output (only for daemon mode)
-`sigterm_grace_period` | No       | `10`              | Any number        | Grace period in seconds until SIGKILL is sent to processes that keeps running after SIGTERM.
-`keep_running`         | No       | `off`             | `on`, `off`       | Exit supervisor when all jobs are stopped (`off`) or keep running (`on`).
-`color`                | No       |                   | `\e[0;34m` (blue) | Text color defined as [escape sequence](https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124) for terminal colors (only foreground mode).
-`color_error`          | No       | `\e[1;31m]` (red) | `\e[0;32m` (green)| Text color for errors defined as [escape sequence](https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124) for terminal colors (only foreground mode).
-`time_format`          | No       | `%F %T`           | `strftime` format | Time format that is used for status messages. See [`strftime`](https://linux.die.net/man/3/strftime) for possible values.
+Key                    | Required | Default             | Possible Values      | Description
+-----------------------|----------|---------------------|----------------------|------------------------------------------------------------------------------------------------
+`logfile`              | No       | `/dev/stdout`       | Valid file path      | Log file for supervisor output (only for daemon mode)
+`sigterm_grace_period` | No       | `10`                | Any number           | Grace period in seconds until SIGKILL is sent to processes that keeps running after SIGTERM.
+`keep_running`         | No       | `off`               | `on`, `off`          | Exit supervisor when all jobs are stopped (`off`) or keep running (`on`).
+`color`                | No       |                     | `"\e[0;34m"` (blue)  | Text color defined as [escape sequence](https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124) for terminal colors (only foreground mode).
+`color_error`          | No       | `"\e[1;31m]"` (red) | `"\e[0;32m"` (green) | Text color for errors defined as [escape sequence](https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124) for terminal colors (only foreground mode).
+`time_format`          | No       | `%F %T`             | `strftime` format    | Time format that is used for status messages. See [`strftime`](https://linux.die.net/man/3/strftime) for possible values.
 
 ### jobs
 
