@@ -104,59 +104,58 @@ _read_config_file() {
 		CONFIG_FILE_BASH=1
 		# shellcheck disable=1090
 		source "$CONFIG_FILE"
-		return 0
+	else
+		# Check if 'yq' binary is available
+		if ! hash yq 2>/dev/null; then
+			echo "Error: 'yq' binary is not available. Get it from: https://github.com/mikefarah/yq"
+			echo
+			exit 1
+		fi >&2
+
+		# Check if the correct 'yq' program is used
+		if [[ "$(yq --version)" != "yq (https://github.com/mikefarah/yq/)"* ]]; then
+			echo "Error: Wrong 'yq' program detected."
+			echo
+			echo "There are at least two, that have the same name:"
+			echo
+			echo "$APP depends on 'yq' from: https://github.com/mikefarah/yq"
+			echo "The Debian repository, for example, provides 'yq' from: https://github.com/kislyuk/yq"
+			echo
+			exit 1
+		fi >&2
+
+		# Validate config file
+		local output
+		if ! output=$(yq . "$CONFIG_FILE" 2>&1); then
+			echo "Error: The configuration file is invalid."
+			echo "$output"
+			echo
+			exit 1
+		fi >&2
+
+		# Read config from file
+
+		# mapfile -t --> Remove a trailing DELIM from each line read (default newline)
+		# yq -r      --> unwrap scalar, print the value with no quotes, colors or comments
+
+		# supervisor config                       Key                  Default value instead of 'null'
+		LOG_FILE=$(            yq -r '.supervisor.logfile              // "/dev/stdout"'   "$CONFIG_FILE")
+		SIGTERM_GRACE_PERIOD=$(yq -r '.supervisor.sigterm_grace_period // "10"'            "$CONFIG_FILE")
+		KEEP_RUNNING=$(        yq -r '.supervisor.keep_running         // "off"'           "$CONFIG_FILE")
+		COLOR=$(               yq -r '.supervisor.color                // ""'              "$CONFIG_FILE")
+		COLOR_ERROR=$(         yq -r '.supervisor.color_error          // "'$'\e[1;31m''"' "$CONFIG_FILE")
+		TIME_FORMAT=$(         yq -r '.supervisor.time_format          // "%F %T"'         "$CONFIG_FILE") # See 'man strftime'
+
+		# Job config                                    Key            Default value instead of 'null'
+		mapfile -t JOB_NAME          < <(yq -r '.jobs[].name           // ""'              "$CONFIG_FILE")
+		mapfile -t JOB_COMMAND       < <(yq -r '.jobs[].command        // ""'              "$CONFIG_FILE")
+		mapfile -t JOB_AUTOSTART     < <(yq -r '.jobs[].autostart      // "on"'            "$CONFIG_FILE")
+		mapfile -t JOB_LOGFILE       < <(yq -r '.jobs[].logfile        // "/dev/stdout"'   "$CONFIG_FILE")
+		mapfile -t JOB_REQUIRED      < <(yq -r '.jobs[].required       // "no"'            "$CONFIG_FILE")
+		mapfile -t JOB_RESTART       < <(yq -r '.jobs[].restart        // "error"'         "$CONFIG_FILE")
+		mapfile -t JOB_RESTART_LIMIT < <(yq -r '.jobs[].restart_limit  // "3"'             "$CONFIG_FILE")
+		declare -A JOB_RESTART_COUNT
 	fi
-
-	# Check if 'yq' binary is available
-	if ! hash yq 2>/dev/null; then
-		echo "Error: 'yq' binary is not available. Get it from: https://github.com/mikefarah/yq"
-		echo
-		exit 1
-	fi >&2
-
-	# Check if the correct 'yq' program is used
-	if [[ "$(yq --version)" != "yq (https://github.com/mikefarah/yq/)"* ]]; then
-		echo "Error: Wrong 'yq' program detected."
-		echo
-		echo "There are at least two, that have the same name:"
-		echo
-		echo "$APP depends on 'yq' from: https://github.com/mikefarah/yq"
-		echo "The Debian repository, for example, provides 'yq' from: https://github.com/kislyuk/yq"
-		echo
-		exit 1
-	fi >&2
-
-	# Validate config file
-	local output
-	if ! output=$(yq . "$CONFIG_FILE" 2>&1); then
-		echo "Error: The configuration file is invalid."
-		echo "$output"
-		echo
-		exit 1
-	fi >&2
-
-	# Read config from file
-
-	# mapfile -t --> Remove a trailing DELIM from each line read (default newline)
-	# yq -r      --> unwrap scalar, print the value with no quotes, colors or comments
-
-	# supervisor config                       Key                  Default value instead of 'null'
-	LOG_FILE=$(            yq -r '.supervisor.logfile              // "/dev/stdout"'   "$CONFIG_FILE")
-	SIGTERM_GRACE_PERIOD=$(yq -r '.supervisor.sigterm_grace_period // "10"'            "$CONFIG_FILE")
-	KEEP_RUNNING=$(        yq -r '.supervisor.keep_running         // "off"'           "$CONFIG_FILE")
-	COLOR=$(               yq -r '.supervisor.color                // ""'              "$CONFIG_FILE")
-	COLOR_ERROR=$(         yq -r '.supervisor.color_error          // "'$'\e[1;31m''"' "$CONFIG_FILE")
-	TIME_FORMAT=$(         yq -r '.supervisor.time_format          // "%F %T"'         "$CONFIG_FILE") # See 'man strftime'
-
-	# Job config                                    Key            Default value instead of 'null'
-	mapfile -t JOB_NAME          < <(yq -r '.jobs[].name           // ""'              "$CONFIG_FILE")
-	mapfile -t JOB_COMMAND       < <(yq -r '.jobs[].command        // ""'              "$CONFIG_FILE")
-	mapfile -t JOB_AUTOSTART     < <(yq -r '.jobs[].autostart      // "on"'            "$CONFIG_FILE")
-	mapfile -t JOB_LOGFILE       < <(yq -r '.jobs[].logfile        // "/dev/stdout"'   "$CONFIG_FILE")
-	mapfile -t JOB_REQUIRED      < <(yq -r '.jobs[].required       // "no"'            "$CONFIG_FILE")
-	mapfile -t JOB_RESTART       < <(yq -r '.jobs[].restart        // "error"'         "$CONFIG_FILE")
-	mapfile -t JOB_RESTART_LIMIT < <(yq -r '.jobs[].restart_limit  // "3"'             "$CONFIG_FILE")
-	declare -A JOB_RESTART_COUNT
 
 	# Validate config
 
