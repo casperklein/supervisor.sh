@@ -268,6 +268,8 @@ _show_config() {
 	[[ "$color"       == '$'\'*\' ]] && color=${color:2:-1}
 	[[ "$color_error" == '$'\'*\' ]] && color_error=${color_error:2:-1}
 
+	# 'printf %q' returns escape character as \E
+	# YAML however requires \e
 	# \E --> \e
 	color=${color//\\E/\\e}
 	color_error=${color_error//\\E/\\e}
