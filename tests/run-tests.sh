@@ -2,6 +2,8 @@
 
 set -e
 
+export CONFIG=supervisor.yaml
+
 cd "$(dirname "$(readlink -f "$0")")"
 
 # Run simple YQ tests
@@ -11,4 +13,4 @@ cd "$(dirname "$(readlink -f "$0")")"
 ./run-info.sh
 
 # Run supervisor
-PATH="$PWD/jobs:$PATH" exec ../supervisor.sh -c supervisor.yaml "$@"
+PATH="$PWD/jobs:$PATH" exec ../supervisor.sh -c "$CONFIG" "$@"

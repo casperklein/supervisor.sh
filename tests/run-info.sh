@@ -7,6 +7,7 @@
 
 echo "Bash Version:  $BASH_VERSION"
 echo "User:          $(id -un) ($(id -u))"
+echo "Configuration: $(readlink -f "$CONFIG")"
 echo "PID Directory: ${PID_DIR:-/run/supervisor.sh}"
 
 # Check which Bash builtins are available
