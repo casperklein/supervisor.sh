@@ -288,7 +288,7 @@ _show_config() {
 
 	for i in "${!JOB_NAME[@]}"; do
 		cat <<-CONFIG
-		  # Job $(( i + 1 ))"
+		  # Job $(( i + 1 ))
 		  - name: "${JOB_NAME[i]}"
 		    command: ${JOB_COMMAND[i]}
 		    autostart: "${JOB_AUTOSTART[i]}"
@@ -982,12 +982,12 @@ _terminate() {
 		local hours=$(( (total % 86400) / 3600 ))
 		local mins=$((  (total %  3600) /   60 ))
 		local secs=$((   total %    60         ))
-    		local output
+		local output
 
 		(( days > 0 )) && output="${days}d "
 		output+="${hours}h ${mins}m ${secs}s"
 
-    		echo "$output"
+		echo "$output"
 	}
 
 	local signal=${1:-}
@@ -1073,18 +1073,18 @@ trap "      _terminate TERM" SIGTERM # Stop supervisor when receiving SIGTERM
 
 # Running as daemon?
 if (( FOREGROUND == 0 )); then
-		# Ignore SIGHUP
-		trap "" SIGHUP
+	# Ignore SIGHUP
+	trap "" SIGHUP
 
-		# Close STDIN file descriptor
-		exec 0>&-
+	# Close STDIN file descriptor
+	exec 0>&-
 
-		# Redirect STDOUT and STDERR to /dev/null or a log file if configured
-		if [ "$LOG_FILE" == "/dev/stdout" ]; then
-			exec &>  /dev/null
-		else
-			exec &>> "$LOG_FILE"
-		fi
+	# Redirect STDOUT and STDERR to /dev/null or a log file if configured
+	if [ "$LOG_FILE" == "/dev/stdout" ]; then
+		exec &>  /dev/null
+	else
+		exec &>> "$LOG_FILE"
+	fi
 else
 	echo "$$" >"$PID_FILE"
 fi

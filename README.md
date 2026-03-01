@@ -128,7 +128,7 @@ jobs:
   - name: "job3-no-autostart"
     command: "echo 'Job 3: I was started manually'"
     autostart: "off"
-    logfile: "/var/log/job4.log"
+    logfile: "/var/log/job3.log"
 
   - name: "job4-required"
     command: "echo 'Job 4: I am required. When I stop in 20 seconds, supervisor will stop too.'; sleep 20"
