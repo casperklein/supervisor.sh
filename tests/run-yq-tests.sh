@@ -5,9 +5,9 @@
 set -ueo pipefail
 
 APP="supervisor.sh"
-CONFIG_FILE="../supervisor.yaml"
-
+: "${CONFIG_FILE:=supervisor.yaml}"
 cd "$(dirname "$0")"
+# echo "CONFIG_FILE: $(readlink -f "$CONFIG_FILE")"
 
 # Check if 'yq' binary is available
 if ! hash yq 2>/dev/null; then
@@ -15,12 +15,6 @@ if ! hash yq 2>/dev/null; then
 	echo
 	exit 1
 fi >&2
-
-# supervisor config
-LOG_FILE=$(            yq -r '.supervisor.logfile // "/dev/stdout"'    "$CONFIG_FILE")
-SIGTERM_GRACE_PERIOD=$(yq -r '.supervisor.sigterm_grace_period // "2"' "$CONFIG_FILE")
-KEEP_RUNNING=$(        yq -r '.supervisor.keep_running // "off"'       "$CONFIG_FILE")
-COLOR=$(               yq -r '.supervisor.color // "FOO-BAR"'          "$CONFIG_FILE")
 
 # Job config
 mapfile -t JOB_NAME      < <(yq -r '.jobs[].name      // ""'            "$CONFIG_FILE") # Default value is an empty string, instead of 'null'
@@ -30,11 +24,11 @@ mapfile -t JOB_REQUIRED  < <(yq -r '.jobs[].required  // "no"'          "$CONFIG
 mapfile -t JOB_LOGFILE   < <(yq -r '.jobs[].logfile   // "/dev/stdout"' "$CONFIG_FILE") # Default value is   '/dev/stdout', instead of 'null'
 mapfile -t JOB_AUTOSTART < <(yq -r '.jobs[].autostart // "on"'          "$CONFIG_FILE") # Default value is            'on', instead of 'null'
 
-__explain() {
+_explain() {
 	echo "There are at least two, that have the same name:"
 	echo
-	echo "$APP depends on 'yq' from: https://github.com/mikefarah/yq"
-	echo "The Debian repository, for example, provides 'yq' from: https://github.com/kislyuk/yq"
+	echo "  - $APP depends on 'yq' from: https://github.com/mikefarah/yq"
+	echo "  - The Debian repository, for example, provides 'yq' from: https://github.com/kislyuk/yq"
 	echo
 }
 
@@ -48,16 +42,11 @@ _show_error_and_exit() {
 	echo
 	echo "The cause for that is most likely the usage of the wrong 'yq' program."
 	echo
-	__explain
+	_explain
 	exit 1
 } >&2
 
-[ -z "$LOG_FILE" ]                   && _show_error_and_exit "VAR" "LOG_FILE"
-[ -z "$SIGTERM_GRACE_PERIOD" ]       && _show_error_and_exit "VAR" "SIGTERM_GRACE_PERIOD"
-[ -z "$KEEP_RUNNING" ]               && _show_error_and_exit "VAR" "KEEP_RUNNING"
-[ -z "$COLOR" ]                      && _show_error_and_exit "VAR" "COLOR"
-
-JOB_COUNT_EXPECTED=$(grep -c name: $CONFIG_FILE)
+JOB_COUNT_EXPECTED=$(grep -cP '^\s*(- )?name:' "$CONFIG_FILE" || echo "0")
 JOB_COUNT=${#JOB_NAME[@]}
 if (( JOB_COUNT == JOB_COUNT_EXPECTED )); then
 	(( JOB_COUNT !=  ${#JOB_COMMAND[@]} ))   && _show_error_and_exit "ARRAY" "JOB_COMMAND"
@@ -72,11 +61,11 @@ else
 fi
 
 # Check if the correct 'yq' program is used
-if [[ "$(yq --version)" != "yq (https://github.com/mikefarah/yq/)"* ]]; then
+if [[ "$(yq --version 2>&1)" != "yq (https://github.com/mikefarah/yq/)"* ]]; then
 	echo "Error: Wrong 'yq' program detected."
 	echo
-	__explain
-	echo "debug $(yq --version)"
+	_explain
+	echo #"Debug: $(yq --version)"
 	exit 1
 fi >&2
 
