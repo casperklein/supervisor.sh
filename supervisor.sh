@@ -113,13 +113,13 @@ _read_config_file() {
 		fi >&2
 
 		# Check if the correct 'yq' program is used
-		if [[ "$(yq --version)" != "yq (https://github.com/mikefarah/yq/)"* ]]; then
+		if [[ "$(yq --version 2>&1)" != "yq (https://github.com/mikefarah/yq/)"* ]]; then
 			echo "Error: Wrong 'yq' program detected."
 			echo
 			echo "There are at least two, that have the same name:"
 			echo
-			echo "$APP depends on 'yq' from: https://github.com/mikefarah/yq"
-			echo "The Debian repository, for example, provides 'yq' from: https://github.com/kislyuk/yq"
+			echo "  - $APP depends on 'yq' from: https://github.com/mikefarah/yq"
+			echo "  - The Debian repository, for example, provides 'yq' from: https://github.com/kislyuk/yq"
 			echo
 			exit 1
 		fi >&2
