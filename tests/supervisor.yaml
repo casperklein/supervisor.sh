@@ -20,7 +20,7 @@ jobs:
     # command: (echo "This job output is prefixed with the current date/time"; sleep 1; echo "Another line") | (trap '' SIGTERM; ts '%F  %T ') # Does not work if 'ts' command is not available
 
     # Using Bash
-    # command: (echo "This job output is prefixed with the current date/time"; sleep 1; echo "Another line") | (trap '' SIGTERM; while IFS= read -r line; do printf -- '%(%F  %T)T  %s\n' -1 "$line"; done)
+    # command: (echo "This job output is prefixed with the current date/time"; sleep 1; echo "Another line") | (trap '' SIGTERM; while IFS= read -r line; do printf '%(%F  %T)T  %s\n' -1 "$line"; done)
 
     # Using Bash helper script
     command: (echo "This job output is prefixed with the current date/time"; sleep 1; echo "Another line") | helper-prefix.sh

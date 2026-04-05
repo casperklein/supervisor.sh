@@ -321,9 +321,9 @@ _status() {
 	# Don't use multiple 'printf' statements (separate color and status message 'printf').
 	# This can lead to a race condition, where $color is set and then output from a job starts.
 	if [ -n "$color" ]; then
-		printf -- "%s%($TIME_FORMAT)T %s%s\n" "$color" -1 "$1" $'\e[0m'
+		printf "%s%($TIME_FORMAT)T %s%s\n" "$color" -1 "$1" $'\e[0m'
 	else
-		printf -- "%($TIME_FORMAT)T %s\n" -1 "$1"
+		printf "%($TIME_FORMAT)T %s\n" -1 "$1"
 	fi
 
 	return 0
@@ -500,7 +500,7 @@ _show_process_status_table() {
 	__str_repeat(){
 		local char=$1 count=$2 output
 		printf -v output -- "%${count}s"
-		printf -- "%s" "${output// /$char}"
+		printf "%s" "${output// /$char}"
 	}
 
 	__print_table_line() {
@@ -510,31 +510,31 @@ _show_process_status_table() {
 		# $4   End character
 
 		# Start character
-		printf -- "%s" "$2"
+		printf "%s" "$2"
 
 		# 1st column
 		__str_repeat "$1" $(( padding_name  + 2 ))
 
 		# Separator
-		printf -- "%s" "$3"
+		printf "%s" "$3"
 
 		# 2nd column
 		__str_repeat "$1" $(( padding_state  + 2 ))
 
 		# Separator
-		printf -- "%s" "$3"
+		printf "%s" "$3"
 
 		# 3rd column
 		__str_repeat "$1" $(( padding_pid  + 2 ))
 
 		# Separator
-		printf -- "%s" "$3"
+		printf "%s" "$3"
 
 		# 4th column
 		__str_repeat "$1" $(( padding_logfile  + 2 ))
 
 		# End character
-		printf -- "%s\n" "$4"
+		printf "%s\n" "$4"
 	}
 
 	# Top border
@@ -555,49 +555,49 @@ _show_process_status_table() {
 			echo -n "│ "
 			if (( i == 0 )); then
 				# Print header row in bright white
-				printf -- "%s" "$white${name[i]}$reset"
+				printf "%s" "$white${name[i]}$reset"
 			else
-				printf -- "%s"       "${name[i]}"
+				printf "%s"       "${name[i]}"
 			fi
 			__str_repeat " " $(( padding_name - ${#name[i]} + 1 ))
 
 			# 2nd column (State)
 			echo -n "│ "
 			case "${state[i]}" in
-				  State) printf -- "%s" "$white${state[i]}$reset" ;; # Print header row in bright white
-				running) printf -- "%s" "$green${state[i]}$reset" ;; # Print "running" jobs in green
-				stopped) printf -- "%s"   "$red${state[i]}$reset" ;; # Print "stopped" jobs in red
+				  State) printf "%s" "$white${state[i]}$reset" ;; # Print header row in bright white
+				running) printf "%s" "$green${state[i]}$reset" ;; # Print "running" jobs in green
+				stopped) printf "%s"   "$red${state[i]}$reset" ;; # Print "stopped" jobs in red
 			esac
 			__str_repeat " " $(( padding_state - ${#state[i]} + 1 ))
 
 			# 3rd column (PID)
 			echo -n "│ "
 			case "${pid[i]}" in
-				PID) printf -- "%s" "$white${pid[i]}$reset" ;;
-				  *) printf -- "%s"       "${pid[i]}"       ;;
+				PID) printf "%s" "$white${pid[i]}$reset" ;;
+				  *) printf "%s"       "${pid[i]}"       ;;
 			esac
 			__str_repeat " " $(( padding_pid - ${#pid[i]} + 1 ))
 
 			# 4th column (Logfile)
 			echo -n "│ "
 			case "${logfile[i]}" in
-				Logfile) printf -- "%s" "$white${logfile[i]}$reset" ;;
-				      *) printf -- "%s"       "${logfile[i]}"       ;;
+				Logfile) printf "%s" "$white${logfile[i]}$reset" ;;
+				      *) printf "%s"       "${logfile[i]}"       ;;
 			esac
 			__str_repeat " " $(( padding_logfile - ${#logfile[i]} + 1 ))
 		else
 			# Colorless table
 			# 1st column (Name)
-			printf -- "│ %-*s " "$padding_name"    "${name[i]}"
+			printf "│ %-*s " "$padding_name"    "${name[i]}"
 
 			# 2nd column (State)
-			printf -- "│ %-*s " "$padding_state"   "${state[i]}"
+			printf "│ %-*s " "$padding_state"   "${state[i]}"
 
 			# 3rd column (PID)
-			printf -- "│ %-*s " "$padding_pid"     "${pid[i]}"
+			printf "│ %-*s " "$padding_pid"     "${pid[i]}"
 
 			# 4th column (Logfile)
-			printf -- "│ %-*s " "$padding_logfile" "${logfile[i]}"
+			printf "│ %-*s " "$padding_logfile" "${logfile[i]}"
 		fi
 
 		# End character
@@ -879,6 +879,7 @@ case "${1:-}" in
 			JOB_RESTART          \
 			JOB_RESTART_LIMIT
 		)
+
 		# Declare variables as global and write config file
 		echo "${VARS//declare/& -g}" > "$CONFIG_FILE".sh
 		exit 0
