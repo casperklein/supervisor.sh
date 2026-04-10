@@ -704,11 +704,12 @@ _set_job_state() {
 
 	case "$state" in
 		start)
+			# Job start triggered via CLI
 			: >"$job_file.pid.start"
 			;;
 
 		stop)
-			# Let supervisor know, that the job is stopped on purpose.
+			# Let supervisor know, that the job is stopped on purpose (via CLI)
 			# This is important
 			# - if a job terminates and is configured with 'required: yes'
 			# - if a job terminates and is configured with 'restart: on'
@@ -717,12 +718,14 @@ _set_job_state() {
 			;;
 
 		stopped)
+			# Job stopped
 			: >"$job_file.pid"
 			rm -f "$job_file.pid.start"
 			: >"$job_file.pid.stopped"
 			;;
 
 		started)
+			# Job started
 			rm -f "$job_file.pid."{start,stop,stopped}
 			;;
 	esac
