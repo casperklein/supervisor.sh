@@ -634,6 +634,9 @@ _start_job_cli() {
 			# Send USR1 signal to supervisor to trigger the job start
 			# start_job_trap() will then start the job
 			if ! kill -SIGUSR1 "$(<"$PID_FILE")"; then
+				# Delete marker
+				rm "$PID_DIR/$name.pid.start"
+
 				echo "Error: Triggering job start failed."
 				echo
 				return 1
