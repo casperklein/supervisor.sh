@@ -645,7 +645,15 @@ _start_job_cli() {
 			_status "Starting job: $name"
 
 			# Wait until job has started
+			SECONDS=0 # Increments automatically
 			while [ -f "$PID_DIR/$name.pid.start" ]; do
+				if (( SECONDS >= 10 )); then
+					# Delete marker
+					rm "$PID_DIR/$name.pid.start"
+
+					_status "Error: Job was not started within 10 seconds. Check $APP log."
+					return 1
+				fi
 				sleep 0.2
 			done
 
