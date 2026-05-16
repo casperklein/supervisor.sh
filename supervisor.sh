@@ -1009,8 +1009,9 @@ _terminate() {
 
 	# Unexpected termination (unknown signal or error)
 	# 'kill -0' does not work reliably after receiving a signal without a trap handler, e.g. SIGSEGV.
-	# Child processes can turn into zombies and are treated as still running.
-	# Stop supervisor and jobs in a generic way without job monitoring.
+	# After _stop_app() sends SIGTERM to the child process it turns into a zombie: grep State /proc/PID/status --> State:  Z (zombie)
+	# That's because 'wait' have to be called on that process.
+	# Therefore stop supervisor and jobs in a generic way without job monitoring.
 	# This will mostly take longer, because the full grace period is used
 	# and supervisor will not exit early if the jobs terminate faster.
 	if [ -z "$signal" ]; then
