@@ -959,7 +959,7 @@ if ! (( BASH_VERSINFO[0] > 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 1)
 	exit 1
 fi >&2
 
-# shellcheck disable=SC2174
+# shellcheck disable=2174
 if ! mkdir -m 700 -p "$PID_DIR" 2>/dev/null; then
 	echo "Error: PID directory '$PID_DIR' could not be created. Check permissions."
 	echo
