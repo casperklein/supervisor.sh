@@ -261,18 +261,18 @@ _show_config() {
 	local color="" color_error=""
 
 	# Escape ANSI colors
-	[ -n "$COLOR"       ] && printf -v color       -- '%q' "$COLOR"
-	[ -n "$COLOR_ERROR" ] && printf -v color_error -- '%q' "$COLOR_ERROR"
+	[ -n "$COLOR"       ] && color=${COLOR@Q}
+	[ -n "$COLOR_ERROR" ] && color_error=${COLOR_ERROR@Q}
 
-	# Remove surrounding: $''
-	[[ "$color"       == '$'\'*\' ]] && color=${color:2:-1}
-	[[ "$color_error" == '$'\'*\' ]] && color_error=${color_error:2:-1}
-
-	# 'printf %q' returns escape character as \E
+	# @Q above returns the escape character as \E
 	# YAML however requires \e
-	# \E --> \e
+	# Replace \E --> \e
 	color=${color//\\E/\\e}
 	color_error=${color_error//\\E/\\e}
+
+	# Remove surrounding $'' if present
+	[[ "$color"       == '$'\'*\' ]] && color=${color:2:-1}
+	[[ "$color_error" == '$'\'*\' ]] && color_error=${color_error:2:-1}
 
 	cat <<-CONFIG
 		supervisor:
