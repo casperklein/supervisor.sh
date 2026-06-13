@@ -17,6 +17,14 @@ _supervisor_sh() {
 		local i basename name jobs
 
 		case "$prev" in
+			-c|--config)
+				mapfile -t COMPREPLY < <(compgen -f -- "$cur")
+				;;
+
+			-h|--help|-v|--version|status|fix|lint|log|logs|convert)
+				return 0
+				;;
+
 			start)
 				for i in "$pid_dir"/*.pid; do
 					basename=${i##*/}
@@ -37,14 +45,6 @@ _supervisor_sh() {
 					fi
 				done
 				mapfile -t COMPREPLY < <(compgen -W "$jobs" -- "$cur")
-				;;
-
-			-h|--help|-v|--version|status|fix|lint|log|logs|convert)
-				return 0
-				;;
-
-			-c|--config)
-				mapfile -t COMPREPLY < <(compgen -f -- "$cur")
 				;;
 
 			*)
