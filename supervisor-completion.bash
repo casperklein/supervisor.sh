@@ -39,7 +39,7 @@ _supervisor_sh() {
 				mapfile -t COMPREPLY < <(compgen -W "$jobs" -- "$cur")
 				;;
 
-			-h|--help|-v|--version|status|fix|log|logs|convert)
+			-h|--help|-v|--version|status|fix|lint|log|logs|convert)
 				return 0
 				;;
 
