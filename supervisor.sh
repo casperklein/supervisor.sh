@@ -696,6 +696,16 @@ _stop_job_cli() {
 				sleep 0.2
 			done
 
+			SECONDS=0 # Increments automatically
+			until [ -f "$PID_DIR/$name.pid.stopped" ]; do
+				if (( SECONDS >= 10 )); then
+					_status "Job terminated: $name ($job_pid)"
+					_status "Error: Runtime files were not cleaned up by $APP within 10 seconds."
+					exit 1
+				fi
+				sleep 0.2
+			done
+
 			_status "Job terminated: $name ($job_pid)"
 			return 0
 		else
@@ -861,7 +871,6 @@ case "${1:-}" in
 			_stop_app_cli # Continue from here after the supervisor was stopped to start again
 		else
 			_stop_job_cli "$2"
-			sleep 1
 			_start_job_cli "$2"
 			exit 0
 		fi
