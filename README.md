@@ -174,7 +174,7 @@ You can also run the demo locally using `tests/run-tests.sh` or `tests/run-tests
 
 This includes 4 jobs:
 
-1. parent.sh: A simple bash script that starts a child process (`child.sh`) and then does nothing. When the TERM signal is received, the script terminates. When `child.sh` receives the TERM signal, it will be ignored. When `supervisor.sh` stops this job, it takes care, that the whole process group has terminated. Since child.sh ignores the TERM signal, the process will be killed (SIGKILL) after a grace period.
+1. parent.sh: A simple bash script that starts a child process (`child.sh`) and then does nothing. When the TERM signal is received, the script terminates. When `child.sh` receives the TERM signal, it will be ignored. When `supervisor.sh` stops this job, it takes care, that the whole process group has terminated. Since `child.sh` ignores the TERM signal, the process will be killed (SIGKILL) after a grace period.
 
 2. fail.sh: A simple bash script, that fails after 3 seconds. This job will be restarted 2 times on failure. On the third failure, `supervisor.sh` terminates, because the job is configured as _required_.
 
