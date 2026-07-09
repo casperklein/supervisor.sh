@@ -829,13 +829,14 @@ case "${1:-}" in
 
 	fix)    _fix_unclean_shutdown; exit ;;
 
-	status) _show_process_status_table; exit ;;
+	status) _exit_if_unclean_shutdown; _show_process_status_table; exit ;;
 
 	start)
 		# Start daemon or job?
 		if [ -z "${2:-}" ]; then
 			# Start daemon if not running
 			_exit_if_unclean_shutdown
+			_exit_if_app_is_already_running
 		else
 			# Start job if not running
 			_start_job_cli "$2"
@@ -869,6 +870,7 @@ case "${1:-}" in
 			fi >&2
 
 			_stop_app_cli # Continue from here after the supervisor was stopped to start again
+			_exit_if_unclean_shutdown
 		else
 			_stop_job_cli "$2"
 			_start_job_cli "$2"
@@ -977,8 +979,6 @@ fi >&2
 
 # Run as daemon
 if [ "$1" != "--daemon" ]; then
-	_exit_if_app_is_already_running
-
 	if ! { : >> "$LOG_FILE"; } 2>/dev/null; then
 		echo "Error: $APP log file '$LOG_FILE' is not writeable."
 		echo
