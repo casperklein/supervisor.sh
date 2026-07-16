@@ -359,7 +359,7 @@ _exit_if_app_is_already_running() {
 _check_clean_shutdown() {
 	local i
 	if ! _is_app_running; then
-		for i in "$PID_DIR"/*.pid* "$PID_DIR"/.sigterm*; do
+		for i in "$PID_DIR/.sigterm"* "$PID_DIR/"*.pid*; do
 			return 1
 		done
 	fi
@@ -378,8 +378,8 @@ _exit_if_unclean_shutdown() {
 }
 
 _delete_runtime_files() {
-	rm -f "$PID_DIR/"*.pid*
-	rm -f "$PID_DIR/.sigterm"
+	rm -f "$PID_DIR/.sigterm" \
+	      "$PID_DIR/"*.pid*
 }
 
 # Stop any running jobs and delete runtime files
