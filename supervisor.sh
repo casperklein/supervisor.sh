@@ -996,7 +996,7 @@ if [ "$1" != "--daemon" ]; then
 fi
 
 _terminate() {
-	# Termination is now in progress. Disable traps to prevent possible loops
+	# Termination is now in progress. Disable traps to prevent loops.
 	trap "" SIGHUP SIGINT SIGTERM EXIT
 
 	# Calculate total runtime
@@ -1034,7 +1034,7 @@ _terminate() {
 		exit 1
 	fi
 
-	[ "$signal" != "NO_SIGNAL" ] && _status "$signal signal received."
+	[ "$signal" != "NO_SIGNAL" ] && _status "$signal received."
 
 	_stop_app
 
@@ -1091,10 +1091,10 @@ _terminate() {
 }
 
 # Set signal handlers
-trap "      _terminate     " EXIT    # Unexpected signals and errors
-trap "      _terminate HUP " SIGHUP  # Stop supervisor when receiving SIGHUP
-trap "echo; _terminate INT " SIGINT  # Stop supervisor when receiving SIGINT
-trap "      _terminate TERM" SIGTERM # Stop supervisor when receiving SIGTERM
+trap "      _terminate        " EXIT    # Unexpected signals and errors
+trap "      _terminate SIGHUP " SIGHUP  # Stop supervisor when receiving SIGHUP
+trap "echo; _terminate SIGINT " SIGINT  # Stop supervisor when receiving SIGINT
+trap "      _terminate SIGTERM" SIGTERM # Stop supervisor when receiving SIGTERM
 
 # Running as daemon?
 if (( FOREGROUND == 0 )); then
