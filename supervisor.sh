@@ -410,7 +410,7 @@ _fix_unclean_shutdown() {
 		done
 		if (( wait_grace_period == 1 )); then
 			wait_grace_period=0
-			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD}s before sending SIGKILL to any jobs that are still running."
+			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD} seconds before sending SIGKILL to any jobs that are still running."
 			sleep "$SIGTERM_GRACE_PERIOD"
 		else
 			break
@@ -685,7 +685,7 @@ _stop_job_cli() {
 			_set_job_state "stop" "$PID_DIR/$name"
 			kill -SIGTERM -"$job_pid" 2>/dev/null || true
 
-			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD}s before sending SIGKILL."
+			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD} seconds before sending SIGKILL."
 
 			# Wait until job has terminated
 			while kill -0 -"$job_pid" 2>/dev/null; do
