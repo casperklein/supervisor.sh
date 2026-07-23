@@ -553,24 +553,42 @@ _stop_app() {
 }
 
 _show_process_status_table() {
-	local i basename name=("Name") state=("State") pid=("PID") logfile=("Logfile")
+	local name=("Name") state=("State") pid=("PGID") logfile=("Logfile")
+	local i basename ec
+	local orphaned=()
 
 	# Get process states
 	for i in "$PID_DIR"/*.pid; do
 		basename=${i##*/}
 		name+=("${basename:0:-4}")
-		if kill -0 -"$(<"$i")" 2>/dev/null; then
-			state+=(running)
-			pid+=("$(<"$i")")
-			logfile+=("$(readlink -f "/proc/${pid[-1]}/fd/1" || true)")
-		else
-			state+=(stopped)
-			pid+=("")
-			logfile+=("")
-		fi
+
+		_is_process_running "$i" && ec=$? || ec=$?
+
+		# Check exit code
+		case "$ec" in
+			0)
+				  state+=( running                                          )
+				    pid+=( "$(<"$i")"                                       )
+				logfile+=( "$(readlink -f "/proc/${pid[-1]}/fd/1" || true)" )
+				;;
+
+			1)
+				  state+=( stopped )
+				    pid+=( ""      )
+				logfile+=( ""      )
+				;;
+
+			2)
+				   state+=( "running*" )
+				     pid+=( "$(<"$i")" )
+				 logfile+=( ""         )
+				orphaned+=( "$(<"$i")" )
+				;;
+		esac
 	done
 
 	if (( ${#name[@]} == 1 )); then
+		# No PID files in $PID_DIR
 		echo "Error: $APP is not running."
 		echo
 		return 1
@@ -639,10 +657,11 @@ _show_process_status_table() {
 	__print_table_line "─" "┌" "┬" "┐"
 
 	# Print table
-	local green=$'\e[0;32m'
-	local red=$'\e[1;31m'
-	local white=$'\e[1;37m'
-	local reset=$'\e[0m'
+	local    red=$'\e[1;31m'
+	local  green=$'\e[0;32m'
+	local yellow=$'\e[0;33m'
+	local  white=$'\e[1;37m'
+	local  reset=$'\e[0m'
 
 	for i in "${!name[@]}"; do
 		if (( NO_COLOR == 0 )); then
@@ -662,17 +681,18 @@ _show_process_status_table() {
 			# 2nd column (State)
 			echo -n "│ "
 			case "${state[i]}" in
-				  State) printf "%s" "$white${state[i]}$reset" ;; # Print header row in bright white
-				running) printf "%s" "$green${state[i]}$reset" ;; # Print "running" jobs in green
-				stopped) printf "%s"   "$red${state[i]}$reset" ;; # Print "stopped" jobs in red
+				   State) printf "%s"  "$white${state[i]}$reset" ;; # Print header row in bright white
+				 running) printf "%s"  "$green${state[i]}$reset" ;; # Print "running"  jobs in green
+				 stopped) printf "%s"    "$red${state[i]}$reset" ;; # Print "stopped"  jobs in red
+				running*) printf "%s" "$yellow${state[i]}$reset" ;; # Print "running*" jobs in yellow
 			esac
 			__str_repeat " " $(( padding_state - ${#state[i]} + 1 ))
 
 			# 3rd column (PID)
 			echo -n "│ "
 			case "${pid[i]}" in
-				PID) printf "%s" "$white${pid[i]}$reset" ;;
-				  *) printf "%s"       "${pid[i]}"       ;;
+				PGID) printf "%s" "$white${pid[i]}$reset" ;;
+				   *) printf "%s"       "${pid[i]}"       ;;
 			esac
 			__str_repeat " " $(( padding_pid - ${#pid[i]} + 1 ))
 
@@ -710,6 +730,14 @@ _show_process_status_table() {
 	# Bottom border
 	__print_table_line "─" "└" "┴" "┘"
 	echo
+
+	if (( ${#orphaned[@]} > 0 )); then
+		echo "State: ${yellow}running*$reset --> Main process exited, but child processes are still running."
+		echo "The child processes are not necessarily part of the job anymore."
+		echo
+		echo "To inspect the orphaned child processes, run: ps -o pid,pgid,cmd ${orphaned[*]/#/-g }"
+		echo
+	fi
 }
 
 _start_job_cli() {
