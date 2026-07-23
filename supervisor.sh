@@ -329,9 +329,95 @@ _status() {
 	return 0
 }
 
+_get_starttime_from_pid() {
+	local pid=$1 stat
+
+	# Non bash alternative
+	# stat -c %Y /proc/$pid
+
+	# man proc_pid_stat
+	# Field 22 starttime: The time the process started after system boot. The value is expressed in clock ticks (divide by sysconf(_SC_CLK_TCK))
+	IFS= read -r stat < "/proc/$pid/stat"
+
+	# Remove the first two fields, because the second field (the filename of the executable, in parentheses) can contain whitespaces.
+	stat=${stat#*)}
+	read -r -a stat <<<"$stat"
+
+	# Output field 20 (starttime)
+	echo "${stat[19]}"
+}
+
+# After a process terminates, the OS may assign its PID to a different process.
+# Verify the saved process start time to ensure the PID still belongs to the expected process.
+_check_process_starttime() {
+	local pid_file=$1 starttime_app starttime_pid
+
+	if [ -f "$pid_file.starttime" ]; then
+		starttime_app=$(<"$pid_file.starttime")
+		starttime_pid=$(_get_starttime_from_pid "$(<"$pid_file")")
+
+		if [ "$starttime_app" == "$starttime_pid" ]; then
+			return 0
+		fi
+	fi
+
+	return 1
+}
+
+_is_process_running() {
+	local pid_file=$1
+
+	# supervisor
+	if [ "$pid_file" == "$PID_FILE" ]; then
+		if kill -0 "$(<"$pid_file")" 2>/dev/null; then
+			if _check_process_starttime "$pid_file"; then
+				# supervisor is runnning
+				return 0
+			fi
+		fi
+
+		# supervisor is not running --> process not running or wrong start time
+		return 1
+	fi
+
+	__is_process_group_running() {
+		local pid_file=$1
+
+		if kill -0 -"$(<"$pid_file")" 2>/dev/null; then
+			return 0
+		fi
+
+		return 1
+	}
+
+	# Job
+	if kill -0 "$(<"$pid_file")" 2>/dev/null; then
+		if _check_process_starttime "$pid_file"; then
+			# Job is running
+			return 0
+		fi
+
+		if __is_process_group_running "$pid_file"; then
+			# Only child processes are running
+			return 2
+		fi
+
+		# Job is not running --> wrong start time
+		return 1
+	fi
+
+	if __is_process_group_running "$pid_file"; then
+		# Only child processes are running
+		return 2
+	fi
+
+	# Job is not running
+	return 1
+}
+
 _is_app_running() {
 	if [ -f "$PID_FILE" ]; then
-		if kill -0 "$(<"$PID_FILE")" 2>/dev/null; then
+		if _is_process_running "$PID_FILE"; then
 			return 0
 		fi
 	fi
@@ -741,6 +827,7 @@ _set_job_state() {
 		stopped)
 			# Job stopped
 			: >"$job_file.pid"
+			: >"$job_file.pid.starttime"
 			rm -f "$job_file.pid.start"
 			: >"$job_file.pid.stopped"
 			;;
@@ -989,7 +1076,8 @@ if [ "$1" != "--daemon" ]; then
 
 	cd /
 	setsid bash "$APP_PATH" --config "$CONFIG_FILE" "--daemon" &
-	echo $! >"$PID_FILE"
+	echo "$!" >"$PID_FILE"
+	_get_starttime_from_pid "$!" >"$PID_FILE.starttime"
 
 	_status "$APP $VER started ($!)"
 	exit 0
@@ -1112,6 +1200,7 @@ if (( FOREGROUND == 0 )); then
 	fi
 else
 	echo "$$" >"$PID_FILE"
+	_get_starttime_from_pid "$$" >"$PID_FILE.starttime"
 fi
 
 _status "$APP $VER started ($$)"
@@ -1132,6 +1221,7 @@ _start_job() {
 	setsid bash -c "${JOB_COMMAND[i]}" &>>"${JOB_LOGFILE[i]}" &
 	PIDS[i]=$!
 	echo "${PIDS[i]}" >"$PID_DIR/${JOB_NAME[i]}.pid"
+	_get_starttime_from_pid "${PIDS[i]}" >"$PID_DIR/${JOB_NAME[i]}.pid.starttime"
 
 	_set_job_state "started" "$PID_DIR/${JOB_NAME[i]}"
 
