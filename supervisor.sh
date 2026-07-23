@@ -470,7 +470,7 @@ _delete_runtime_files() {
 
 # Stop any running jobs and delete runtime files
 _fix_unclean_shutdown() {
-	local i name pid signal wait_grace_period=0
+	local i name pid signal ec wait_grace_period=0
 
 	if _check_clean_shutdown; then
 		echo "Everything is fine, no action required."
@@ -485,11 +485,24 @@ _fix_unclean_shutdown() {
 				name=${i##*/}
 				name=${name:0:-4}
 				pid=$(<"$i")
+
 				if kill -0 -"$pid" 2>/dev/null; then
+					# Process group is running
 					_status "Sending $signal: $name ($pid)"
 					kill -"$signal" -"$pid" 2>/dev/null || true
 					if [ "$signal" == "SIGTERM" ]; then
 						wait_grace_period=1
+					else
+						# Wait until process group got killed
+						SECONDS=0 # Increments automatically
+						while kill -0 -"$pid" 2>/dev/null; do
+							if (( SECONDS >= 10 )); then
+								_status "Error: Process group ($pid) is still running after 10 seconds."
+								echo
+								exit 1
+							fi
+							sleep 0.2
+						done
 					fi
 				fi
 			fi
@@ -502,7 +515,6 @@ _fix_unclean_shutdown() {
 			break
 		fi
 	done
-	sleep 1
 
 	_delete_runtime_files
 	_status "Fix was successful."
