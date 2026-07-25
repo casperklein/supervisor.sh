@@ -761,7 +761,7 @@ _start_job_cli() {
 			# start_job_trap() will then start the job
 			if ! kill -SIGUSR1 "$(<"$PID_FILE")"; then
 				# Delete marker
-				rm "$PID_DIR/$name.pid.start"
+				rm -f "$PID_DIR/$name.pid.start"
 
 				echo "Error: Triggering job start failed."
 				echo
@@ -775,7 +775,7 @@ _start_job_cli() {
 			while [ -f "$PID_DIR/$name.pid.start" ]; do
 				if (( SECONDS >= 10 )); then
 					# Delete marker
-					rm "$PID_DIR/$name.pid.start"
+					rm -f "$PID_DIR/$name.pid.start"
 
 					_status "Error: Job was not started within 10 seconds. Check $APP log."
 					return 1
