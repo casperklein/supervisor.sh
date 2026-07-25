@@ -823,7 +823,7 @@ _stop_job_cli() {
 			done
 
 			SECONDS=0 # Increments automatically
-			until [ -f "$PID_DIR/$name.pid.stopped" ]; do
+			until [[ -f "$PID_DIR/$name.pid.stopped" || ! -f "$PID_DIR/$name.pid"  ]]; do
 				if (( SECONDS >= 10 )); then
 					_status "Job terminated: $name ($job_pid)"
 					_status "Error: Runtime files were not cleaned up by $APP within 10 seconds."
