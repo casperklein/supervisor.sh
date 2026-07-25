@@ -23,8 +23,8 @@ BASE_IMAGE=${1:-alpine}
 # Build image
 echo "Using base image: $BASE_IMAGE"
 echo
-docker build -t "$APP" -f tests/Dockerfile  --build-arg "BASE_IMAGE=$BASE_IMAGE" .
+docker build -t "$APP-$BASE_IMAGE" -f tests/Dockerfile  --build-arg "BASE_IMAGE=$BASE_IMAGE" .
 echo
 
 # Run container
-docker run --rm -it --name "$APP" "$APP"
+docker run --rm -it --name "$APP-$BASE_IMAGE" "$APP-$BASE_IMAGE"
