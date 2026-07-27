@@ -25,8 +25,10 @@ PID_FILE="$PID_DIR/$APP.pid"
 
 CONFIG_FILE_BASH=0
 FOREGROUND=0
+HERTZ=$(getconf CLK_TCK 2>/dev/null || echo "100") # CLK_TCK --> Ticks per second (usually 100)
 NO_COLOR=0
 PIDS=()
+PIDS_STARTTIME=()
 TIME_FORMAT="%F %T" # Default value for CLI commands where config is not read, e.g. 'supervisor.sh stop'
 
 # Set default config path
@@ -343,8 +345,8 @@ _get_starttime_from_pid() {
 	stat=${stat#*)}
 	read -r -a stat <<<"$stat"
 
-	# Output field 20 (starttime)
-	echo "${stat[19]}"
+	# Output field 20 (starttime) in seconds
+	echo "$(( stat[19] / HERTZ ))"
 }
 
 # After a process terminates, the OS may assign its PID to a different process.
@@ -552,10 +554,47 @@ _stop_app() {
 	fi
 }
 
+# Calculate total runtime
+_get_runtime() {
+	local total=${1:-$SECONDS}
+	local days=$((   total / 86400         ))
+	local hours=$(( (total % 86400) / 3600 ))
+	local mins=$((  (total %  3600) /   60 ))
+	local secs=$((   total %    60         ))
+	local output
+
+	# Ensure a width of 2
+	printf -v hours "%2d" "$hours"
+	printf -v  mins "%2d" "$mins"
+	printf -v  secs "%2d" "$secs"
+
+	if (( days > 0 )); then
+		output="${days}d ${hours}h ${mins}m ${secs}s"
+	elif (( hours > 0 )); then
+		output="${hours}h ${mins}m ${secs}s"
+	elif (( mins > 0 )); then
+		output="${mins}m ${secs}s"
+	else
+		output="${secs}s"
+	fi
+
+	# Trim white spaces
+	read -r -d "" output <<<"$output" || true
+
+	echo "$output"
+}
+
 _show_process_status_table() {
-	local name=("Name") state=("State") pid=("PGID") logfile=("Logfile")
-	local i basename ec
-	local orphaned=()
+	local name=("Name") state=("State") pid=("PGID") runtime=("Runtime") logfile=("Logfile")
+	local line boot_time i basename ec starttime current_time orphaned=()
+
+	# Get boot time
+	while read -r line; do
+		if [[ $line =~ ^btime\ (.+) ]]; then
+			boot_time=${BASH_REMATCH[1]}
+			break
+		fi
+	done < /proc/stat
 
 	# Get process states
 	for i in "$PID_DIR"/*.pid; do
@@ -567,21 +606,32 @@ _show_process_status_table() {
 		# Check exit code
 		case "$ec" in
 			0)
-				  state+=( running                                          )
+				  state+=( "running"                                        )
 				    pid+=( "$(<"$i")"                                       )
 				logfile+=( "$(readlink -f "/proc/${pid[-1]}/fd/1" || true)" )
+
+				starttime=$(<"$i.starttime")
+				printf -v current_time '%(%s)T' -1
+				runtime+=( "$(_get_runtime "$(( current_time - (boot_time + starttime) ))")" )
 				;;
 
 			1)
-				  state+=( stopped )
-				    pid+=( ""      )
-				logfile+=( ""      )
+				  state+=( "stopped" )
+				    pid+=( ""        )
+				logfile+=( ""        )
+
+				if [ -f "$i.runtime" ]; then
+					runtime+=( "$(<"$i.runtime")" )
+				else
+					runtime+=( "" )
+				fi
 				;;
 
 			2)
 				   state+=( "running*" )
 				     pid+=( "$(<"$i")" )
 				 logfile+=( ""         )
+				 runtime+=( ""         )
 				orphaned+=( "$(<"$i")" )
 				;;
 		esac
@@ -606,10 +656,11 @@ _show_process_status_table() {
 	}
 
 	# Set column padding
-	local padding_name padding_state padding_pid padding_logfile
+	local padding_name padding_state padding_pid padding_runtime padding_logfile
 	padding_name=$(    __get_max_element_length_from_array "${name[@]}"    )
 	padding_state=$(   __get_max_element_length_from_array "${state[@]}"   )
 	padding_pid=$(     __get_max_element_length_from_array "${pid[@]}"     )
+	padding_runtime=$( __get_max_element_length_from_array "${runtime[@]}" )
 	padding_logfile=$( __get_max_element_length_from_array "${logfile[@]}" )
 
 	# Repeat $1 "$2"-times
@@ -647,6 +698,12 @@ _show_process_status_table() {
 		printf "%s" "$3"
 
 		# 4th column
+		__str_repeat "$1" $(( padding_runtime  + 2 ))
+
+		# Separator
+		printf "%s" "$3"
+
+		# 5th column
 		__str_repeat "$1" $(( padding_logfile  + 2 ))
 
 		# End character
@@ -696,7 +753,15 @@ _show_process_status_table() {
 			esac
 			__str_repeat " " $(( padding_pid - ${#pid[i]} + 1 ))
 
-			# 4th column (Logfile)
+			# 4th colum (Runtime)
+			echo -n "│ "
+			case "${runtime[i]}" in
+				Runtime) printf "%s" "$white${runtime[i]}$reset" ;;
+				      *) printf "%s"       "${runtime[i]}"       ;;
+			esac
+			__str_repeat " " $(( padding_runtime - ${#runtime[i]} + 1 ))
+
+			# 5th column (Logfile)
 			echo -n "│ "
 			case "${logfile[i]}" in
 				Logfile) printf "%s" "$white${logfile[i]}$reset" ;;
@@ -714,7 +779,10 @@ _show_process_status_table() {
 			# 3rd column (PID)
 			printf "│ %-*s " "$padding_pid"     "${pid[i]}"
 
-			# 4th column (Logfile)
+			# 4th column (Runtime)
+			printf "│ %-*s " "$padding_runtime" "${runtime[i]}"
+
+			# 5th column (Logfile)
 			printf "│ %-*s " "$padding_logfile" "${logfile[i]}"
 		fi
 
@@ -867,14 +935,13 @@ _set_job_state() {
 		stopped)
 			# Job stopped
 			: >"$job_file.pid"
-			: >"$job_file.pid.starttime"
-			rm -f "$job_file.pid.start"
 			: >"$job_file.pid.stopped"
+			rm -f "$job_file.pid."{start,starttime}
 			;;
 
 		started)
 			# Job started
-			rm -f "$job_file.pid."{start,stop,stopped}
+			rm -f "$job_file.pid."{start,stop,stopped,runtime}
 			;;
 	esac
 	return 0
@@ -1127,21 +1194,6 @@ _terminate() {
 	# Termination is now in progress. Disable traps to prevent loops.
 	trap "" SIGHUP SIGINT SIGTERM EXIT
 
-	# Calculate total runtime
-	__total_runtime() {
-		local total=$SECONDS
-		local days=$((   total / 86400         ))
-		local hours=$(( (total % 86400) / 3600 ))
-		local mins=$((  (total %  3600) /   60 ))
-		local secs=$((   total %    60         ))
-		local output
-
-		(( days > 0 )) && output="${days}d "
-		output+="${hours}h ${mins}m ${secs}s"
-
-		echo "$output"
-	}
-
 	local signal=${1:-}
 
 	# Unexpected termination (unknown signal or error)
@@ -1158,7 +1210,7 @@ _terminate() {
 		sleep "$SIGTERM_GRACE_PERIOD"
 		kill -SIGKILL "${PIDS[@]/#/-}" 2>/dev/null || true
 		_delete_runtime_files
-		_status "$APP ($$) terminated after $(__total_runtime)"
+		_status "$APP ($$) terminated after $(_get_runtime)"
 		exit 1
 	fi
 
@@ -1214,7 +1266,7 @@ _terminate() {
 
 	_delete_runtime_files
 
-	_status "$APP ($$) terminated after $(__total_runtime)"
+	_status "$APP ($$) terminated after $(_get_runtime)"
 	exit 0
 }
 
@@ -1259,12 +1311,16 @@ _start_job() {
 
 	# setsid --> run each job in his own process group
 	setsid bash -c "${JOB_COMMAND[i]}" &>>"${JOB_LOGFILE[i]}" &
+
+	# Save PID
 	PIDS[i]=$!
 	echo "${PIDS[i]}" >"$PID_DIR/${JOB_NAME[i]}.pid"
-	_get_starttime_from_pid "${PIDS[i]}" >"$PID_DIR/${JOB_NAME[i]}.pid.starttime"
+
+	# Save start time
+	PIDS_STARTTIME[i]=$(_get_starttime_from_pid "${PIDS[i]}")
+	echo "${PIDS_STARTTIME[i]}" >"$PID_DIR/${JOB_NAME[i]}.pid.starttime"
 
 	_set_job_state "started" "$PID_DIR/${JOB_NAME[i]}"
-
 	_status "Job started: ${JOB_NAME[i]} (${PIDS[i]})"
 }
 
@@ -1339,12 +1395,18 @@ _exit_app_if_job_is_required() {
 }
 
 _clean_up_job() {
-	local i=$1
+	local i=$1 now _
 
 	# Kill possible orphaned processes
 	_kill_process_group "$i"
 
+	# Save runtime
+	IFS=. read -r now _ </proc/uptime
+	_get_runtime "$(( now - PIDS_STARTTIME[i] ))" >"$PID_DIR/${JOB_NAME[i]}.pid.runtime"
+
+	unset "PIDS_STARTTIME[$i]"
 	unset "PIDS[$i]"
+
 	_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
 }
 
