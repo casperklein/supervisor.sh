@@ -663,6 +663,22 @@ _show_process_status_table() {
 	padding_runtime=$( __get_max_element_length_from_array "${runtime[@]}" )
 	padding_logfile=$( __get_max_element_length_from_array "${logfile[@]}" )
 
+	# Add padding to GPID lines to right align them
+	for i in "${!pid[@]}"; do
+		(( i == 0 )) && continue
+		if (( ${#pid[i]} < padding_pid )); then
+			printf -v "pid[i]" "%*s" "$padding_pid" "${pid[i]}"
+		fi
+	done
+
+	# Add padding to runtime lines to right align them
+	for i in "${!runtime[@]}"; do
+		(( i == 0 )) && continue
+		if (( ${#runtime[i]} < padding_runtime )); then
+			printf -v "runtime[i]" "%*s" "$padding_runtime" "${runtime[i]}"
+		fi
+	done
+
 	# Repeat $1 "$2"-times
 	__str_repeat(){
 		local char=$1 count=$2 output
