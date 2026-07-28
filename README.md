@@ -25,6 +25,7 @@ To run the supervisor in daemon mode, use `supervisor.sh start`.
 
 ## Dependencies
 
+- Linux kernel
 - Bash >= 5.1
 - [yq](https://github.com/mikefarah/yq) - a lightweight and portable command-line YAML processor
 - The following core utilities: cat mkdir readlink rm setsid sleep tail

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Dependencies: yq, bash >= 5.1
+# Dependencies: Linux kernel, yq, bash >= 5.1
 # Bash 5.1 or later is required to support 'wait -p'
 
 # Also these common core utilities are required: cat mkdir readlink rm setsid sleep tail
