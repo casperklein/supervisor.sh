@@ -87,6 +87,8 @@ _usage() {
 }
 
 _read_config_file() {
+	local marker output i j=0
+
 	if [ ! -f "$CONFIG_FILE" ]; then
 		echo "Error: Configuration file '$CONFIG_FILE' not found."
 		echo
@@ -100,7 +102,6 @@ _read_config_file() {
 	fi >&2
 
 	# Is the config file a Bash script (converted from YAML)?
-	local marker
 	read -r -N 7 marker < "$CONFIG_FILE" || true # 'read' may fail if the file is empty or smaller than 7 bytes
 	if [ "$marker" == "declare" ]; then
 		CONFIG_FILE_BASH=1
@@ -127,7 +128,6 @@ _read_config_file() {
 		fi >&2
 
 		# Validate config file
-		local output
 		if ! output=$(yq . "$CONFIG_FILE" 2>&1); then
 			echo "Error: The configuration file is invalid."
 			echo "$output"
@@ -176,7 +176,6 @@ _read_config_file() {
 	fi
 
 	# Validate job names and commands
-	local i
 	for i in "${!JOB_NAME[@]}"; do
 		# Job name and command cannot be empty/missing
 		if [[ -z "${JOB_NAME[i]}" || -z "${JOB_COMMAND[i]}" ]]; then
@@ -194,7 +193,6 @@ _read_config_file() {
 
 	# The job name must be uniq
 	declare -A job_name_uniq
-	local j=0
 	for i in "${JOB_NAME[@]}"; do
 		((++j))
 		if [ -n "${job_name_uniq[$i]:-}" ]; then
@@ -645,8 +643,7 @@ _show_process_status_table() {
 	fi >&2
 
 	__get_max_element_length_from_array() {
-		local max_len=0
-		local i
+		local i max_len=0
 		for i in "$@"; do
 			if (( ${#i} > max_len )); then
 				max_len=${#i}
@@ -885,7 +882,6 @@ _stop_job_cli() {
 	_exit_if_app_is_not_running
 
 	local name=$1 job_pid
-	local grace_period_start=$SECONDS
 
 	if [ -f "$PID_DIR/$name.pid" ]; then
 		if [ ! -f "$PID_DIR/$name.pid.stopped" ]; then
@@ -898,6 +894,7 @@ _stop_job_cli() {
 			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD} seconds before sending SIGKILL."
 
 			# Wait until job has terminated
+			local grace_period_start=$SECONDS
 			while kill -0 -"$job_pid" 2>/dev/null; do
 				if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
 					_status "Job is still running, sending SIGKILL: $name ($job_pid)"
@@ -1210,7 +1207,7 @@ _terminate() {
 	# Termination is now in progress. Disable traps to prevent loops.
 	trap "" SIGHUP SIGINT SIGTERM EXIT
 
-	local signal=${1:-}
+	local signal=${1:-} i
 
 	# Unexpected termination (unknown signal or error)
 	# 'kill -0' does not work reliably after receiving a signal without a trap handler, e.g. SIGSEGV.
@@ -1234,10 +1231,10 @@ _terminate() {
 
 	_stop_app
 
-	local i grace_period_start=$SECONDS last_wait_info=$SECONDS
+	local grace_period_start=$SECONDS last_wait_info=$SECONDS
 
 	__wait_info() {
-		local wait_jobs seconds_until_sigkill
+		local i wait_jobs seconds_until_sigkill
 		for i in "${!PIDS[@]}"; do
 			wait_jobs+="${JOB_NAME[i]}, "
 		done
@@ -1377,12 +1374,12 @@ trap _start_job_trap SIGUSR1
 # Kill a process group
 _kill_process_group() {
 	local i=$1
-	local grace_period_start=$SECONDS
 
 	if kill -0 -"${PIDS[i]}" 2>/dev/null; then
 		kill -SIGTERM -"${PIDS[i]}" 2>/dev/null || true
 		_status "Waiting for child processes to terminate: ${JOB_NAME[i]} (${PIDS[i]})"
 
+		local grace_period_start=$SECONDS
 		while kill -0 -"${PIDS[i]}" 2>/dev/null; do
 			if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
 				# Kill possible orphaned processes
