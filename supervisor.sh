@@ -948,8 +948,8 @@ _set_job_state() {
 		stopped)
 			# Job stopped
 			: >"$job_file.pid"
-			: >"$job_file.pid.stopped"
 			rm -f "$job_file.pid."{start,starttime}
+			: >"$job_file.pid.stopped"
 			;;
 
 		started)
