@@ -18,7 +18,7 @@ shopt -s nullglob        # Return nothing if '*' does not expand
 # Global variables
 APP="supervisor.sh"
 APP_PATH=$(readlink -f "$0")
-VER=0.15
+VER=0.16
 
 : "${PID_DIR:=/run/$APP}" # Allow PID_DIR override via ENV
 PID_FILE="$PID_DIR/$APP.pid"
@@ -1113,7 +1113,7 @@ case "${1:-}" in
 		)
 
 		# Declare variables as global and write config file
-		echo "${VARS//declare/& -g}" > "$CONFIG_FILE".sh
+		echo "${VARS//declare/& -g}" >"$CONFIG_FILE.sh"
 		exit 0
 		;;
 
