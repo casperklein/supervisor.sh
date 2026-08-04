@@ -1009,9 +1009,9 @@ done
 # Read config
 if ! [[
 	# Some commands don’t require the config file, e.g. status / start <job> / stop / lint
-	"${1:-}" == "status"               ||
-	"${1:-}" == "start" && -n "${2:-}" ||
-	"${1:-}" == "stop" && -z "${2:-}"  ||
+	"${1:-}" == "status"                ||
+	"${1:-}" == "start"  && -n "${2:-}" ||
+	"${1:-}" == "stop"   && -z "${2:-}" ||
 	"${1:-}" == "lint"
 ]]; then
 	_read_config_file
