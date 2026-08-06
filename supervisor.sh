@@ -1337,15 +1337,20 @@ _start_job() {
 	_status "Job started: ${JOB_NAME[i]} (${PIDS[i]})"
 }
 
+# Create jobs first, where autostart is disabled.
+# This avoids a race condition, when a job starts another job that might not exist yet.
+for i in "${!JOB_NAME[@]}"; do
+	if [ "${JOB_AUTOSTART[i]}" == "off" ]; then
+		_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
+	fi
+done
+
 # Start jobs
 for i in "${!JOB_NAME[@]}"; do
 	if [ "${JOB_AUTOSTART[i]}" == "on" ]; then
 		# Autostart enabled
 		JOB_RESTART_COUNT[i]=0
 		_start_job "$i"
-	else
-		# Autostart disabled
-		_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
 	fi
 done
 
