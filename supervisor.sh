@@ -910,6 +910,10 @@ _stop_job_cli() {
 					_status "Error: Runtime files were not cleaned up by $APP within 10 seconds."
 					exit 1
 				fi
+				if _is_process_running "$PID_DIR/$name.pid"; then
+					# Job was restarted by another CLI instance (really fast!)
+					break;
+				fi
 				sleep 0.2
 			done
 
