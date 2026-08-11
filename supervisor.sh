@@ -1369,17 +1369,25 @@ done
 # Start jobs, when USR1 signal is received
 _start_job_trap() {
 	local i name
-	# For jobs that have to be started, a JOB.pid.start file exists
+
+	# For the job that has to be started, a JOB.pid.start file exists.
 	for name in "$PID_DIR"/*.pid.start; do
 		name=${name##*/}
 		name=${name:0:-10}
 
-		# Search and start jobs
+		# Search and start job
 		for i in "${!JOB_NAME[@]}"; do
 			if [ "${JOB_NAME[i]}" == "$name" ]; then
+				if [ -n "${PIDS[i]:-}" ]; then
+					# This should never happen, when using "supervisor.sh start <job>"
+					_status "Error: '$name' job start was requested, but the job is already running." ERROR
+					break
+				fi
+
 				# (Re)set restart count
 				JOB_RESTART_COUNT[i]=0
 				_start_job "$i"
+				break
 			fi
 		done
 	done
