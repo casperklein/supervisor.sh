@@ -824,7 +824,7 @@ _show_process_status_table() {
 _start_job_cli() {
 	_exit_if_app_is_not_running
 
-	local name=$1
+	local name=$1 pid
 
 	if [ -f "$PID_DIR/$name.pid" ]; then
 		if [ -f "$PID_DIR/$name.pid.stopped" ]; then
@@ -864,7 +864,15 @@ _start_job_cli() {
 				sleep 0.2
 			done
 
-			_status "Job started: $name ($(<"$PID_DIR/$name.pid"))"
+			pid=$(<"$PID_DIR/$name.pid")
+			if [ -z "$pid" ]; then
+				# $name.pid.start file was deleted, but PID file is empty.
+				# This happens when a job fails to start because its log file is not writable.
+				_status "Error: Job failed to start."
+				return 1
+			fi
+
+			_status "Job started: $name ($pid)"
 			return 0
 		else
 			echo "Error: $name is already running." >&2
