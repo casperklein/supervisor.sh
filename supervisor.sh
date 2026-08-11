@@ -1204,8 +1204,8 @@ if [ "$1" != "--daemon" ]; then
 fi
 
 _terminate() {
-	# Termination is now in progress. Disable traps to prevent loops.
-	trap "" SIGHUP SIGINT SIGTERM EXIT
+	# Termination is now in progress. Disable traps to prevent loops and race conditions (SIGUSR1).
+	trap "" SIGHUP SIGINT SIGTERM SIGUSR1 EXIT
 
 	local signal=${1:-} i
 
