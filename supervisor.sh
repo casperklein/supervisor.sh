@@ -456,8 +456,8 @@ _exit_if_unclean_shutdown() {
 	if ! _check_clean_shutdown; then
 		echo "Error: $APP was not stopped gracefully. See the process status table below."
 		echo
-		_show_process_status_table
-		echo "Run '$APP fix' to terminate leftover job processes and clean up."
+		_show_process_status_table || true
+		echo "Run '$APP fix' to terminate leftover job processes and clean up runtime data."
 		echo
 		exit 1
 	fi >&2
