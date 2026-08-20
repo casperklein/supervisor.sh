@@ -1328,7 +1328,7 @@ _start_job() {
 	# Prevent restart loop if log file is not writeable
 	if ! { : >> "${JOB_LOGFILE[i]}"; } 2>/dev/null; then
 		_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
-		_status "Error: Job '${JOB_NAME[i]}' could not be started. Log file '${JOB_LOGFILE[i]}' is not writeable."
+		_status "Error: Job '${JOB_NAME[i]}' could not be started. Log file '${JOB_LOGFILE[i]}' is not writeable." ERROR
 		# Explicit return code 0 is mandatory. Any 'return' executed within a trap handler, returns the exit status of the last command
 		# executed before the handler was invoked. In this case, 130 (128 + 10 [SIGUSR1]).
 		return 0
