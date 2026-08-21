@@ -835,13 +835,13 @@ _start_job_cli() {
 				return 1
 			fi >&2
 
-			# Set marker
+			# Create marker file
 			_set_job_state "start" "$PID_DIR/$name"
 
 			# Send USR1 signal to supervisor to trigger the job start
 			# start_job_trap() will then start the job
 			if ! kill -SIGUSR1 "$(<"$PID_FILE")"; then
-				# Delete marker
+				# Delete marker file
 				rm -f "$PID_DIR/$name.pid.start"
 
 				echo "Error: Triggering job start failed."
@@ -855,7 +855,7 @@ _start_job_cli() {
 			SECONDS=0 # Increments automatically
 			while [ -f "$PID_DIR/$name.pid.start" ]; do
 				if (( SECONDS >= 10 )); then
-					# Delete marker
+					# Delete marker file
 					rm -f "$PID_DIR/$name.pid.start"
 
 					_status "Error: Job was not started within 10 seconds. Check $APP log."
