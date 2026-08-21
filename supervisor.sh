@@ -1230,10 +1230,16 @@ _terminate() {
 	# and supervisor will not exit early if the jobs terminate faster.
 	if [ -z "$signal" ]; then
 		_status "Error: Unexpected termination" ERROR
+
+		# Send SIGTERM to all jobs
 		_stop_app
+
 		_status "Waiting $SIGTERM_GRACE_PERIOD seconds for job termination"
 		sleep "$SIGTERM_GRACE_PERIOD"
+
+		# Send SIGKILL to all jobs
 		kill -SIGKILL "${PIDS[@]/#/-}" 2>/dev/null || true
+
 		_delete_runtime_files
 		_status "$APP ($$) terminated after $(_get_runtime)"
 		exit 1
@@ -1241,6 +1247,7 @@ _terminate() {
 
 	[ "$signal" != "NO_SIGNAL" ] && _status "$signal received."
 
+	# Send SIGTERM to all jobs
 	_stop_app
 
 	local grace_period_start=$SECONDS last_wait_info=$SECONDS
