@@ -22,6 +22,7 @@ VER=0.16
 
 : "${PID_DIR:=/run/$APP}" # Allow PID_DIR override via ENV
 PID_FILE="$PID_DIR/$APP.pid"
+LOCK_DIR="$PID_DIR/.lock"
 
 CONFIG_FILE_BASH=0
 FOREGROUND=0
@@ -329,6 +330,23 @@ _status() {
 	return 0
 }
 
+_release_lock() {
+	rm -rf "$LOCK_DIR"
+}
+
+# Acquire lock for exclusive (start) operations
+_acquire_lock() {
+	if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+		return 1
+	fi
+
+	# Release lock on termination
+	# shellcheck disable=2064
+	trap "_release_lock" EXIT
+
+	return 0
+}
+
 _get_starttime_from_pid() {
 	local pid=$1 stat
 
@@ -443,18 +461,26 @@ _exit_if_app_is_already_running() {
 # Check if supervisor was gracefully stopped (Is PID_DIR clean?)
 # Test: kill -9 $(</run/supervisor.sh/supervisor.sh.pid)
 _check_clean_shutdown() {
-	local i
+	local i skip_lock=${1:-}
+
 	if ! _is_app_running; then
 		for i in "$PID_DIR/.sigterm"* "$PID_DIR/"*.pid*; do
 			return 1
 		done
+
+		if [ -z "$skip_lock" ]; then
+			for i in "$LOCK_DIR"*/; do
+				return 1
+			done
+		fi
 	fi
+
 	return 0
 }
 
 _exit_if_unclean_shutdown() {
-	if ! _check_clean_shutdown; then
-		echo "Error: $APP was not stopped gracefully. See the process status table below."
+	if ! _check_clean_shutdown "${1:-}"; then
+		echo "Error: $APP was not stopped gracefully."
 		echo
 		_show_process_status_table || true
 		echo "Run '$APP fix' to terminate leftover job processes and clean up runtime data."
@@ -466,6 +492,8 @@ _exit_if_unclean_shutdown() {
 _delete_runtime_files() {
 	rm -f "$PID_DIR/.sigterm" \
 	      "$PID_DIR/"*.pid*
+
+	_release_lock
 }
 
 # Stop any running jobs and delete runtime files
@@ -537,6 +565,7 @@ _stop_app_cli() {
 	while kill -0 "$app_pid" 2>/dev/null; do
 		sleep 0.5
 	done
+
 	_status "$APP ($app_pid) terminated"
 }
 
@@ -826,11 +855,21 @@ _start_job_cli() {
 
 	local name=$1 pid
 
+	# Ensure that only one job starts at a time
+	SECONDS=0 # Increments automatically
+	until _acquire_lock; do
+		if (( SECONDS >= 10 )); then
+			echo "Error: Could not acquire lock within 10 seconds."
+			echo
+			return 1
+		fi >&2
+		sleep 0.2
+	done >&2
+
 	if [ -f "$PID_DIR/$name.pid" ]; then
 		if [ -f "$PID_DIR/$name.pid.stopped" ]; then
-			# Request job start once
-			if [ -f "$PID_DIR/$name.pid.start" ]; then
-				echo "Error: Job is already being started."
+			if [ -f "$PID_DIR/.sigterm" ]; then
+				echo "Error: $APP termination is in progress."
 				echo
 				return 1
 			fi >&2
@@ -1035,8 +1074,22 @@ if (( NO_COLOR == 1 )); then
 	COLOR_ERROR=""
 fi
 
+_create_pid_directory() {
+	# shellcheck disable=2174
+	if ! mkdir -m 700 -p "$PID_DIR" 2>/dev/null; then
+		echo "Error: PID directory '$PID_DIR' could not be created. Check permissions."
+		echo
+		exit 1
+	fi >&2
+}
+
 # Get command
 case "${1:-}" in
+	""|*start)
+		# Ensure PID directory exists for start operations
+		_create_pid_directory
+		;;&
+
 	lint)
 		# Check and print config
 		_read_config_file
@@ -1052,12 +1105,7 @@ case "${1:-}" in
 
 	start)
 		# Start daemon or job?
-		if [ -z "${2:-}" ]; then
-			# Start daemon if not running
-			_exit_if_unclean_shutdown
-			_exit_if_app_is_already_running
-		else
-			# Start job if not running
+		if [ -n "${2:-}" ]; then
 			_start_job_cli "$2"
 			exit 0
 		fi
@@ -1089,7 +1137,6 @@ case "${1:-}" in
 			fi >&2
 
 			_stop_app_cli # Continue from here after the supervisor was stopped to start again
-			_exit_if_unclean_shutdown
 		else
 			_stop_job_cli "$2"
 			_start_job_cli "$2"
@@ -1167,8 +1214,6 @@ case "${1:-}" in
 
 	# No command? Start supervisor in foreground.
 	"")
-		_exit_if_unclean_shutdown
-		_exit_if_app_is_already_running
 		set -- "--daemon" # Pretend to be already in daemon mode --> Don't start as daemon
 		FOREGROUND=1      # Run in foreground, not as daemon
 		;;
@@ -1189,12 +1234,18 @@ if ! (( BASH_VERSINFO[0] > 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 1)
 	exit 1
 fi >&2
 
-# shellcheck disable=2174
-if ! mkdir -m 700 -p "$PID_DIR" 2>/dev/null; then
-	echo "Error: PID directory '$PID_DIR' could not be created. Check permissions."
-	echo
-	exit 1
-fi >&2
+if _acquire_lock; then
+	_exit_if_unclean_shutdown skip-lock-check
+	_exit_if_app_is_already_running
+else
+	if [[ $FOREGROUND == 1 || $1 != "--daemon" ]]; then
+		echo "Error: Could not acquire lock. $APP is already being started by another process."
+		echo
+		exit 1
+	fi >&2
+
+	# FOREGROUND == 0 && $1 == "--daemon" --> log already acquired by parent process, see blow.
+fi
 
 # Run as daemon
 if [ "$1" != "--daemon" ]; then
@@ -1210,6 +1261,9 @@ if [ "$1" != "--daemon" ]; then
 	setsid bash "$APP_PATH" --config "$CONFIG_FILE" "--daemon" &
 	echo "$!" >"$PID_FILE"
 	_get_starttime_from_pid "$!" >"$PID_FILE.starttime"
+
+	# Do not release lock. This will be handled by the new daemon process started above.
+	trap "" EXIT
 
 	_status "$APP $VER started ($!)"
 	exit 0
@@ -1328,6 +1382,7 @@ else
 fi
 
 _status "$APP $VER started ($$)"
+_release_lock
 
 _start_job() {
 	local i=$1
@@ -1364,16 +1419,7 @@ for i in "${!JOB_NAME[@]}"; do
 	fi
 done
 
-# Start jobs
-for i in "${!JOB_NAME[@]}"; do
-	if [ "${JOB_AUTOSTART[i]}" == "on" ]; then
-		# Autostart enabled
-		JOB_RESTART_COUNT[i]=0
-		_start_job "$i"
-	fi
-done
-
-# Start jobs, when USR1 signal is received
+# Start a job, when SIGUSR1 is received
 _start_job_trap() {
 	local i name
 
@@ -1401,7 +1447,16 @@ _start_job_trap() {
 }
 
 # Set signal handler for SIGUSR1
-trap _start_job_trap SIGUSR1
+trap "_start_job_trap" SIGUSR1
+
+# Start jobs
+for i in "${!JOB_NAME[@]}"; do
+	if [ "${JOB_AUTOSTART[i]}" == "on" ]; then
+		# Autostart enabled
+		JOB_RESTART_COUNT[i]=0
+		_start_job "$i"
+	fi
+done
 
 # Kill a process group
 _kill_process_group() {
@@ -1442,9 +1497,6 @@ _exit_app_if_job_is_required() {
 _clean_up_job() {
 	local i=$1 now _
 
-	# Kill possible orphaned processes
-	_kill_process_group "$i"
-
 	# Save runtime
 	IFS=. read -r now _ </proc/uptime
 	_get_runtime "$(( now - PIDS_STARTTIME[i] ))" >"$PID_DIR/${JOB_NAME[i]}.pid.runtime"
@@ -1455,6 +1507,7 @@ _clean_up_job() {
 	_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
 }
 
+# Wait for jobs to terminate
 while :; do
 	if wait -n -p JOB_PID; then
 		JOB_EXIT_CODE=0
@@ -1493,7 +1546,8 @@ while :; do
 				fi
 			fi
 
-			_clean_up_job "$i"
+			# Kill possible orphaned processes
+			_kill_process_group "$i"
 
 			# Restart job if necessary
 			if [[ "${JOB_RESTART[i]}" == "error" && $JOB_EXIT_CODE -gt 0 || "${JOB_RESTART[i]}" == "on" ]]; then
@@ -1502,22 +1556,27 @@ while :; do
 					# Restart job if limit is not already reached
 					if (( JOB_RESTART_LIMIT[i] == 0 || JOB_RESTART_COUNT[i] < JOB_RESTART_LIMIT[i] )); then
 						(( ++JOB_RESTART_COUNT[i] ))
+
 						if (( JOB_RESTART_LIMIT[i] == 0 )); then
 							# No restart limit
 							_status "Restarting (${JOB_RESTART_COUNT[i]}): ${JOB_NAME[i]}"
 						else
 							_status "Restarting (${JOB_RESTART_COUNT[i]}/${JOB_RESTART_LIMIT[i]}): ${JOB_NAME[i]}"
 						fi
+
+						# _clean_up_job (which creates the .stopped marker file) must not be called before _start_job
+						# to prevent a race condition when "supervisor.sh start <job>" is run between _clean_up_job() and _start_job().
 						_start_job "$i"
+						break
 					else
 						_status "Restart limit (${JOB_RESTART_LIMIT[i]}) reached: ${JOB_NAME[i]}"
-						_exit_app_if_job_is_required "$i"
 					fi
 				fi
-			else
-				# No restart
-				_exit_app_if_job_is_required "$i"
 			fi
+
+			_clean_up_job "$i"
+			_exit_app_if_job_is_required "$i"
+			break
 		fi
 	done
 done
