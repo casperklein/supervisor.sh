@@ -489,14 +489,14 @@ _exit_if_unclean_shutdown() {
 	fi >&2
 }
 
-_delete_runtime_files() {
+_delete_runtime_data() {
 	rm -f "$PID_DIR/.sigterm" \
 	      "$PID_DIR/"*.pid*
 
 	_release_lock
 }
 
-# Stop any running jobs and delete runtime files
+# Stop any running jobs and delete runtime data
 _fix_unclean_shutdown() {
 	local i name pid signal ec wait_grace_period=0
 
@@ -544,7 +544,7 @@ _fix_unclean_shutdown() {
 		fi
 	done
 
-	_delete_runtime_files
+	_delete_runtime_data
 	_status "Fix was successful."
 	echo
 }
@@ -1294,7 +1294,7 @@ _terminate() {
 		# Send SIGKILL to all jobs
 		kill -SIGKILL "${PIDS[@]/#/-}" 2>/dev/null || true
 
-		_delete_runtime_files
+		_delete_runtime_data
 		_status "$APP ($$) terminated after $(_get_runtime)"
 		exit 1
 	fi
@@ -1350,7 +1350,7 @@ _terminate() {
 		sleep 0.2
 	done
 
-	_delete_runtime_files
+	_delete_runtime_data
 
 	_status "$APP ($$) terminated after $(_get_runtime)"
 	exit 0
