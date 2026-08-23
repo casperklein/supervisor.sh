@@ -979,12 +979,12 @@ _stop_job_cli() {
 }
 
 _set_job_state() {
-	local state=$1 job_file=$2
+	local state=$1 name=$2
 
 	case "$state" in
 		start)
 			# Job start triggered via CLI
-			: >"$job_file.pid.start"
+			: >"$name.pid.start"
 			;;
 
 		stop)
@@ -993,19 +993,19 @@ _set_job_state() {
 			# - if a job terminates and is configured with 'required: yes'
 			# - if a job terminates and is configured with 'restart: on'
 			# The marker below ensures that supervisor takes no action in these cases.
-			: >"$job_file.pid.stop"
+			: >"$name.pid.stop"
 			;;
 
 		stopped)
 			# Job stopped
-			: >"$job_file.pid"
-			rm -f "$job_file.pid."{start,starttime}
-			: >"$job_file.pid.stopped"
+			: >"$name.pid"
+			rm -f "$name.pid."{start,starttime}
+			: >"$name.pid.stopped"
 			;;
 
 		started)
 			# Job started
-			rm -f "$job_file.pid."{start,stop,stopped,runtime}
+			rm -f "$name.pid."{start,stop,stopped,runtime}
 			;;
 	esac
 	return 0
