@@ -934,6 +934,12 @@ _stop_job_cli() {
 
 	if [ -f "$pid_file" ]; then
 		if [ ! -f "$pid_file.stopped" ]; then
+			if [ -f "$PID_DIR/.sigterm" ]; then
+				echo "Error: $APP termination is in progress."
+				echo
+				return 1
+			fi >&2
+
 			# Send SIGTERM to job process group
 			pid=$(<"$pid_file")
 			_status "Stopping job: $name ($pid)"
