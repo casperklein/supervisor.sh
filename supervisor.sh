@@ -1384,6 +1384,19 @@ fi
 _status "$APP $VER started ($$)"
 _release_lock
 
+_exit_app_if_job_is_required() {
+	local i=$1
+
+	# Stop supervisor if a required job has terminated
+	if [ "${JOB_REQUIRED[i]}" == "yes" ]; then
+		# Keep running, if the job was stopped on purpose (via the 'stop' command)
+		if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
+			_status "Required job terminated: ${JOB_NAME[i]}" ERROR
+			_terminate NO_SIGNAL
+		fi
+	fi
+}
+
 _start_job() {
 	local i=$1
 
@@ -1391,6 +1404,8 @@ _start_job() {
 	if ! { : >> "${JOB_LOGFILE[i]}"; } 2>/dev/null; then
 		_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
 		_status "Error: Job '${JOB_NAME[i]}' could not be started. Log file '${JOB_LOGFILE[i]}' is not writeable." ERROR
+		_exit_app_if_job_is_required "$i"
+
 		# Explicit return code 0 is mandatory. Any 'return' executed within a trap handler, returns the exit status of the last command
 		# executed before the handler was invoked. In this case, 130 (128 + 10 [SIGUSR1]).
 		return 0
@@ -1478,19 +1493,6 @@ _kill_process_group() {
 		done
 
 		_status "Child processes terminated: ${JOB_NAME[i]} (${PIDS[i]})"
-	fi
-}
-
-_exit_app_if_job_is_required() {
-	local i=$1
-
-	# Stop supervisor if a required job has terminated
-	if [ "${JOB_REQUIRED[i]}" == "yes" ]; then
-		# Keep running, if the job was stopped on purpose (via the 'stop' command)
-		if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
-			_status "Required job terminated: ${JOB_NAME[i]}" ERROR
-			_terminate NO_SIGNAL
-		fi
 	fi
 }
 
