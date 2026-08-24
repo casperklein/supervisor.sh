@@ -854,6 +854,7 @@ _start_job_cli() {
 	_exit_if_app_is_not_running
 
 	local name=$1 pid
+	local pid_file="$PID_DIR/$name.pid"
 
 	# Ensure that only one job starts at a time
 	SECONDS=0 # Increments automatically
@@ -866,8 +867,8 @@ _start_job_cli() {
 		sleep 0.2
 	done >&2
 
-	if [ -f "$PID_DIR/$name.pid" ]; then
-		if [ -f "$PID_DIR/$name.pid.stopped" ]; then
+	if [ -f "$pid_file" ]; then
+		if [ -f "$pid_file.stopped" ]; then
 			if [ -f "$PID_DIR/.sigterm" ]; then
 				echo "Error: $APP termination is in progress."
 				echo
@@ -881,7 +882,7 @@ _start_job_cli() {
 			# start_job_trap() will then start the job
 			if ! kill -SIGUSR1 "$(<"$PID_FILE")"; then
 				# Delete marker file
-				rm -f "$PID_DIR/$name.pid.start"
+				rm -f "$pid_file.start"
 
 				echo "Error: Triggering job start failed."
 				echo
@@ -892,10 +893,10 @@ _start_job_cli() {
 
 			# Wait until job has started
 			SECONDS=0 # Increments automatically
-			while [ -f "$PID_DIR/$name.pid.start" ]; do
+			while [ -f "$pid_file.start" ]; do
 				if (( SECONDS >= 10 )); then
 					# Delete marker file
-					rm -f "$PID_DIR/$name.pid.start"
+					rm -f "$pid_file.start"
 
 					_status "Error: Job was not started within 10 seconds. Check $APP log."
 					return 1
@@ -903,7 +904,7 @@ _start_job_cli() {
 				sleep 0.2
 			done
 
-			pid=$(<"$PID_DIR/$name.pid")
+			pid=$(<"$pid_file")
 			if [ -z "$pid" ]; then
 				# $name.pid.start file was deleted, but PID file is empty.
 				# This happens when a job fails to start because its log file is not writable.
@@ -928,43 +929,44 @@ _start_job_cli() {
 _stop_job_cli() {
 	_exit_if_app_is_not_running
 
-	local name=$1 job_pid
+	local name=$1 pid
+	local pid_file="$PID_DIR/$name.pid"
 
-	if [ -f "$PID_DIR/$name.pid" ]; then
-		if [ ! -f "$PID_DIR/$name.pid.stopped" ]; then
+	if [ -f "$pid_file" ]; then
+		if [ ! -f "$pid_file.stopped" ]; then
 			# Send SIGTERM to job process group
-			job_pid=$(<"$PID_DIR/$name.pid")
-			_status "Stopping job: $name ($job_pid)"
+			pid=$(<"$pid_file")
+			_status "Stopping job: $name ($pid)"
 			_set_job_state "stop" "$PID_DIR/$name"
-			kill -SIGTERM -"$job_pid" 2>/dev/null || true
+			kill -SIGTERM -"$pid" 2>/dev/null || true
 
 			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD} seconds before sending SIGKILL."
 
 			# Wait until job has terminated
 			local grace_period_start=$SECONDS
-			while kill -0 -"$job_pid" 2>/dev/null; do
+			while kill -0 -"$pid" 2>/dev/null; do
 				if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
-					_status "Job is still running, sending SIGKILL: $name ($job_pid)"
-					kill -SIGKILL -"$job_pid" 2>/dev/null || true
+					_status "Job is still running, sending SIGKILL: $name ($pid)"
+					kill -SIGKILL -"$pid" 2>/dev/null || true
 				fi
 				sleep 0.2
 			done
 
 			SECONDS=0 # Increments automatically
-			until [[ -f "$PID_DIR/$name.pid.stopped" || ! -f "$PID_DIR/$name.pid"  ]]; do
+			until [[ -f "$pid_file.stopped" || ! -f "$pid_file" ]]; do
 				if (( SECONDS >= 10 )); then
-					_status "Job terminated: $name ($job_pid)"
+					_status "Job terminated: $name ($pid)"
 					_status "Error: Runtime files were not cleaned up by $APP within 10 seconds."
 					exit 1
 				fi
-				if _is_process_running "$PID_DIR/$name.pid"; then
+				if _is_process_running "$pid_file"; then
 					# Job was restarted by another CLI instance (really fast!)
 					break;
 				fi
 				sleep 0.2
 			done
 
-			_status "Job terminated: $name ($job_pid)"
+			_status "Job terminated: $name ($pid)"
 			return 0
 		else
 			echo "Error: $name is not running." >&2
