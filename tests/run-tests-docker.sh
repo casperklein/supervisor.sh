@@ -27,4 +27,4 @@ docker build -t "$APP-$BASE_IMAGE" -f tests/Dockerfile  --build-arg "BASE_IMAGE=
 echo
 
 # Run container
-docker run --rm -it --name "$APP-$BASE_IMAGE" "$APP-$BASE_IMAGE"
+docker run --rm -it --name "$APP-${BASE_IMAGE//:/-}" "$APP-$BASE_IMAGE"
