@@ -11,7 +11,7 @@
 
 # Shell options
 set   -o errexit         # Exit immediately if a command exits with a non-zero status
-set   -o nounset         # Treat unset variables as an error when substituting
+set   -o nounset         # Treat unset variables as an error when expanded
 shopt -s inherit_errexit # Exit on errors - also in sub-shells
 shopt -s nullglob        # Return nothing if '*' does not expand
 
