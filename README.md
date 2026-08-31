@@ -183,12 +183,12 @@ This includes 4 jobs:
 
 4. prefix: This jobs demonstrated, how to prefix a job output with the current date/time (this can easily match the `time_format` that `supervisor.sh` uses).
 
-## Custom PID directory
+## Custom directory for runtime data
 
-By default, `/run/supervisor.sh` is used for storing files needed at runtime. To use another location, you can set the environment variable `PID_DIR`.
+By default, `/run/supervisor.sh` is used for storing data needed at runtime. To use another location, you can set the environment variable `RUN_DIR`.
 
 ```bash
-PID_DIR=/home/alice/supervisor.sh supervisor.sh start
+RUN_DIR=/home/alice/supervisor.sh supervisor.sh start
 ```
 
 This is useful when `supervisor.sh` runs rootless.

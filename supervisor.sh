@@ -20,9 +20,9 @@ APP="supervisor.sh"
 APP_PATH=$(readlink -f "$0")
 VER=0.16
 
-: "${PID_DIR:=/run/$APP}" # Allow PID_DIR override via ENV
-PID_FILE="$PID_DIR/$APP.pid"
-LOCK_DIR="$PID_DIR/.lock"
+: "${RUN_DIR:=/run/$APP}" # Allow RUN_DIR override via ENV
+PID_FILE="$RUN_DIR/$APP.pid"
+LOCK_DIR="$RUN_DIR/.lock"
 
 CONFIG_FILE_BASH=0
 FOREGROUND=0
@@ -458,13 +458,13 @@ _exit_if_app_is_already_running() {
 	fi >&2
 }
 
-# Check if supervisor was gracefully stopped (Is PID_DIR clean?)
+# Check if supervisor was gracefully stopped (Is RUN_DIR clean?)
 # Test: kill -9 $(</run/supervisor.sh/supervisor.sh.pid)
 _check_clean_shutdown() {
 	local i skip_lock=${1:-}
 
 	if ! _is_app_running; then
-		for i in "$PID_DIR/.sigterm"* "$PID_DIR/"*.pid*; do
+		for i in "$RUN_DIR/.sigterm"* "$RUN_DIR/"*.pid*; do
 			return 1
 		done
 
@@ -490,8 +490,8 @@ _exit_if_unclean_shutdown() {
 }
 
 _delete_runtime_data() {
-	rm -f "$PID_DIR/.sigterm" \
-	      "$PID_DIR/"*.pid*
+	rm -f "$RUN_DIR/.sigterm" \
+	      "$RUN_DIR/"*.pid*
 
 	_release_lock
 }
@@ -508,7 +508,7 @@ _fix_unclean_shutdown() {
 
 	# Send SIGTERM to running jobs, later SIGKILL if necessary
 	for signal in "SIGTERM" "SIGKILL"; do
-		for i in "$PID_DIR"/*.pid; do
+		for i in "$RUN_DIR"/*.pid; do
 			if [ ! -f "$i.stopped" ]; then
 				name=${i##*/}
 				name=${name:0:-4}
@@ -555,7 +555,7 @@ _stop_app_cli() {
 	local app_pid
 	app_pid=$(<"$PID_FILE")
 
-	if [ -f "$PID_DIR/.sigterm" ]; then
+	if [ -f "$RUN_DIR/.sigterm" ]; then
 		_status "Termination is already in progress. Waiting.."
 	else
 		_status "Stopping $APP ($app_pid)"
@@ -571,7 +571,7 @@ _stop_app_cli() {
 
 _stop_app() {
 	# Create marker file to indicate that a shutdown is in progress
-	: >"$PID_DIR/.sigterm"
+	: >"$RUN_DIR/.sigterm"
 
 	_status "Stopping $APP ($$)"
 
@@ -624,7 +624,7 @@ _show_process_status_table() {
 	done < /proc/stat
 
 	# Get process states
-	for i in "$PID_DIR"/*.pid; do
+	for i in "$RUN_DIR"/*.pid; do
 		basename=${i##*/}
 		name+=("${basename:0:-4}")
 
@@ -665,7 +665,7 @@ _show_process_status_table() {
 	done
 
 	if (( ${#name[@]} == 1 )); then
-		# No PID files in $PID_DIR
+		# No PID files in $RUN_DIR
 		echo "Error: $APP is not running."
 		echo
 		return 1
@@ -854,7 +854,7 @@ _start_job_cli() {
 	_exit_if_app_is_not_running
 
 	local name=$1 pid
-	local pid_file="$PID_DIR/$name.pid"
+	local pid_file="$RUN_DIR/$name.pid"
 
 	# Ensure that only one job starts at a time
 	SECONDS=0 # Increments automatically
@@ -869,14 +869,14 @@ _start_job_cli() {
 
 	if [ -f "$pid_file" ]; then
 		if [ -f "$pid_file.stopped" ]; then
-			if [ -f "$PID_DIR/.sigterm" ]; then
+			if [ -f "$RUN_DIR/.sigterm" ]; then
 				echo "Error: $APP termination is in progress."
 				echo
 				return 1
 			fi >&2
 
 			# Create marker file
-			_set_job_state "start" "$PID_DIR/$name"
+			_set_job_state "start" "$RUN_DIR/$name"
 
 			# Send USR1 signal to supervisor to trigger the job start
 			# start_job_trap() will then start the job
@@ -930,11 +930,11 @@ _stop_job_cli() {
 	_exit_if_app_is_not_running
 
 	local name=$1 pid
-	local pid_file="$PID_DIR/$name.pid"
+	local pid_file="$RUN_DIR/$name.pid"
 
 	if [ -f "$pid_file" ]; then
 		if [ ! -f "$pid_file.stopped" ]; then
-			if [ -f "$PID_DIR/.sigterm" ]; then
+			if [ -f "$RUN_DIR/.sigterm" ]; then
 				echo "Error: $APP termination is in progress."
 				echo
 				return 1
@@ -943,7 +943,7 @@ _stop_job_cli() {
 			# Send SIGTERM to job process group
 			pid=$(<"$pid_file")
 			_status "Stopping job: $name ($pid)"
-			_set_job_state "stop" "$PID_DIR/$name"
+			_set_job_state "stop" "$RUN_DIR/$name"
 			kill -SIGTERM -"$pid" 2>/dev/null || true
 
 			_status "Waiting for a grace period of ${SIGTERM_GRACE_PERIOD} seconds before sending SIGKILL."
@@ -1082,10 +1082,10 @@ if (( NO_COLOR == 1 )); then
 	COLOR_ERROR=""
 fi
 
-_create_pid_directory() {
+_create_run_directory() {
 	# shellcheck disable=2174
-	if ! mkdir -m 700 -p "$PID_DIR" 2>/dev/null; then
-		echo "Error: PID directory '$PID_DIR' could not be created. Check permissions."
+	if ! mkdir -m 700 -p "$RUN_DIR" 2>/dev/null; then
+		echo "Error: PID directory '$RUN_DIR' could not be created. Check permissions."
 		echo
 		exit 1
 	fi >&2
@@ -1095,7 +1095,7 @@ _create_pid_directory() {
 case "${1:-}" in
 	""|*start)
 		# Ensure PID directory exists for start operations
-		_create_pid_directory
+		_create_run_directory
 		;;&
 
 	lint)
@@ -1334,7 +1334,7 @@ _terminate() {
 			if ! kill -0 -"${PIDS[i]}" 2>/dev/null; then
 				_status "Job terminated: ${JOB_NAME[i]} (${PIDS[i]})"
 				unset "PIDS[$i]"
-				_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
+				_set_job_state "stopped" "$RUN_DIR/${JOB_NAME[i]}"
 			else
 				# Kill job after grace period
 				if (( SECONDS - grace_period_start >= SIGTERM_GRACE_PERIOD )); then
@@ -1398,7 +1398,7 @@ _exit_app_if_job_is_required() {
 	# Stop supervisor if a required job has terminated
 	if [ "${JOB_REQUIRED[i]}" == "yes" ]; then
 		# Keep running, if the job was stopped on purpose (via the 'stop' command)
-		if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
+		if [ ! -f "$RUN_DIR/${JOB_NAME[i]}.pid.stop" ]; then
 			_status "Required job terminated: ${JOB_NAME[i]}" ERROR
 			_terminate NO_SIGNAL
 		fi
@@ -1410,7 +1410,7 @@ _start_job() {
 
 	# Prevent restart loop if log file is not writeable
 	if ! { : >> "${JOB_LOGFILE[i]}"; } 2>/dev/null; then
-		_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
+		_set_job_state "stopped" "$RUN_DIR/${JOB_NAME[i]}"
 		_status "Error: Job '${JOB_NAME[i]}' could not be started. Log file '${JOB_LOGFILE[i]}' is not writeable." ERROR
 		_exit_app_if_job_is_required "$i"
 
@@ -1424,13 +1424,13 @@ _start_job() {
 
 	# Save PID
 	PIDS[i]=$!
-	echo "${PIDS[i]}" >"$PID_DIR/${JOB_NAME[i]}.pid"
+	echo "${PIDS[i]}" >"$RUN_DIR/${JOB_NAME[i]}.pid"
 
 	# Save start time
 	PIDS_STARTTIME[i]=$(_get_starttime_from_pid "${PIDS[i]}")
-	echo "${PIDS_STARTTIME[i]}" >"$PID_DIR/${JOB_NAME[i]}.pid.starttime"
+	echo "${PIDS_STARTTIME[i]}" >"$RUN_DIR/${JOB_NAME[i]}.pid.starttime"
 
-	_set_job_state "started" "$PID_DIR/${JOB_NAME[i]}"
+	_set_job_state "started" "$RUN_DIR/${JOB_NAME[i]}"
 	_status "Job started: ${JOB_NAME[i]} (${PIDS[i]})"
 }
 
@@ -1438,7 +1438,7 @@ _start_job() {
 # This avoids a race condition, when a job starts another job that might not exist yet.
 for i in "${!JOB_NAME[@]}"; do
 	if [ "${JOB_AUTOSTART[i]}" == "off" ]; then
-		_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
+		_set_job_state "stopped" "$RUN_DIR/${JOB_NAME[i]}"
 	fi
 done
 
@@ -1447,7 +1447,7 @@ _start_job_trap() {
 	local i name
 
 	# For the job that has to be started, a JOB.pid.start file exists.
-	for name in "$PID_DIR"/*.pid.start; do
+	for name in "$RUN_DIR"/*.pid.start; do
 		name=${name##*/}
 		name=${name:0:-10}
 
@@ -1509,12 +1509,12 @@ _clean_up_job() {
 
 	# Save runtime
 	IFS=. read -r now _ </proc/uptime
-	_get_runtime "$(( now - PIDS_STARTTIME[i] ))" >"$PID_DIR/${JOB_NAME[i]}.pid.runtime"
+	_get_runtime "$(( now - PIDS_STARTTIME[i] ))" >"$RUN_DIR/${JOB_NAME[i]}.pid.runtime"
 
 	unset "PIDS_STARTTIME[$i]"
 	unset "PIDS[$i]"
 
-	_set_job_state "stopped" "$PID_DIR/${JOB_NAME[i]}"
+	_set_job_state "stopped" "$RUN_DIR/${JOB_NAME[i]}"
 }
 
 # Wait for jobs to terminate
@@ -1545,10 +1545,10 @@ while :; do
 
 	for i in "${!PIDS[@]}"; do
 		if [ "${PIDS[i]}" == "$JOB_PID" ]; then
-			if [[ $JOB_EXIT_CODE -gt 0 && ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
+			if [[ $JOB_EXIT_CODE -gt 0 && ! -f "$RUN_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
 				_status "Job failed with exit code $JOB_EXIT_CODE: ${JOB_NAME[i]} (${PIDS[i]})" ERROR
 			else
-				if [ -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
+				if [ -f "$RUN_DIR/${JOB_NAME[i]}.pid.stop" ]; then
 					# Job was stopped via 'supervisor.sh stop <job>'
 					_status "Job terminated (expected): ${JOB_NAME[i]} (${PIDS[i]})"
 				else
@@ -1561,7 +1561,7 @@ while :; do
 
 			# Restart job if necessary
 			if [[ "${JOB_RESTART[i]}" == "error" && $JOB_EXIT_CODE -gt 0 || "${JOB_RESTART[i]}" == "on" ]]; then
-				if [ ! -f "$PID_DIR/${JOB_NAME[i]}.pid.stop" ]; then
+				if [ ! -f "$RUN_DIR/${JOB_NAME[i]}.pid.stop" ]; then
 					# Job termination is unexpected
 					# Restart job if limit is not already reached
 					if (( JOB_RESTART_LIMIT[i] == 0 || JOB_RESTART_COUNT[i] < JOB_RESTART_LIMIT[i] )); then

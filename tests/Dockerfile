@@ -61,7 +61,7 @@ ENV PATH=/supervisor:$PATH
 
 # Rootless container
 USER supervisor
-ENV PID_DIR=/home/supervisor/supervisor.sh
+ENV RUN_DIR=/home/supervisor/supervisor.sh
 
 RUN <<EOF
 	# Enable bash completion

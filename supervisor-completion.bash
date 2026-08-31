@@ -13,7 +13,7 @@ _supervisor_sh() {
 		return 0
 	else
 		local app="supervisor.sh"
-		local pid_dir=${PID_DIR:-/run/$app}
+		local run_dir=${RUN_DIR:-/run/$app}
 		local i basename name jobs
 
 		case "$prev" in
@@ -26,7 +26,7 @@ _supervisor_sh() {
 				;;
 
 			start)
-				for i in "$pid_dir"/*.pid; do
+				for i in "$run_dir"/*.pid; do
 					basename=${i##*/}
 					name="${basename:0:-4}"
 					if [[ "$name" != "*" && "$name" != "$app" && -f "$i.stopped" ]]; then
@@ -37,7 +37,7 @@ _supervisor_sh() {
 				;;
 
 			stop|restart)
-				for i in "$pid_dir"/*.pid; do
+				for i in "$run_dir"/*.pid; do
 					basename=${i##*/}
 					name="${basename:0:-4}"
 					if [[ "$name" != "*" && "$name" != "$app" && ! -f "$i.stopped" ]]; then
