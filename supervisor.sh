@@ -1258,7 +1258,7 @@ fi
 # Run as daemon
 if [ "$1" != "--daemon" ]; then
 	if ! { : >> "$LOG_FILE"; } 2>/dev/null; then
-		echo "Error: $APP log file '$LOG_FILE' is not writeable."
+		echo "Error: $APP log file '$LOG_FILE' is not writable."
 		echo
 		exit 1
 	fi >&2
@@ -1408,10 +1408,10 @@ _exit_app_if_job_is_required() {
 _start_job() {
 	local i=$1
 
-	# Prevent restart loop if log file is not writeable
+	# Prevent restart loop if log file is not writable
 	if ! { : >> "${JOB_LOGFILE[i]}"; } 2>/dev/null; then
 		_set_job_state "stopped" "$RUN_DIR/${JOB_NAME[i]}"
-		_status "Error: Job '${JOB_NAME[i]}' could not be started. Log file '${JOB_LOGFILE[i]}' is not writeable." ERROR
+		_status "Error: Job '${JOB_NAME[i]}' could not be started. Log file '${JOB_LOGFILE[i]}' is not writable." ERROR
 		_exit_app_if_job_is_required "$i"
 
 		# Explicit return code 0 is mandatory. Any 'return' executed within a trap handler, returns the exit status of the last command
