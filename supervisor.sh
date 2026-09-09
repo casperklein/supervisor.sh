@@ -1321,7 +1321,10 @@ _terminate() {
 		done
 		if [ -n "${wait_jobs:-}" ]; then
 			seconds_until_sigkill=$(( SIGTERM_GRACE_PERIOD + grace_period_start - SECONDS ))
-			(( seconds_until_sigkill > 0 )) && _status "Waiting $seconds_until_sigkill seconds for job termination: ${wait_jobs:0:-2}"
+			if (( seconds_until_sigkill > 0 )); then
+				last_wait_info=$SECONDS
+				_status "Waiting $seconds_until_sigkill seconds for job termination: ${wait_jobs:0:-2}"
+			fi
 		fi
 		return 0
 	}
@@ -1351,7 +1354,6 @@ _terminate() {
 
 		# Show remaining running jobs every 5 seconds
 		if (( SECONDS - last_wait_info > 4 )); then
-			last_wait_info=$SECONDS
 			__wait_info
 		fi
 
