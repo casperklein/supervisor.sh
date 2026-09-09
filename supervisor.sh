@@ -1283,31 +1283,12 @@ _terminate() {
 
 	local signal=${1:-} i
 
-	# Unexpected termination (unknown signal or error)
-	# 'kill -0' does not work reliably after receiving a signal without a trap handler, e.g. SIGSEGV.
-	# After _stop_app() sends SIGTERM to the child process it turns into a zombie: grep State /proc/PID/status --> State:  Z (zombie)
-	# That's because 'wait' have to be called on that process.
-	# Therefore stop supervisor and jobs in a generic way without job monitoring.
-	# This will mostly take longer, because the full grace period is used
-	# and supervisor will not exit early if the jobs terminate faster.
-	if [ -z "$signal" ]; then
-		_status "Error: Unexpected termination" ERROR
-
-		# Send SIGTERM to all jobs
-		_stop_app
-
-		_status "Waiting $SIGTERM_GRACE_PERIOD seconds for job termination"
-		sleep "$SIGTERM_GRACE_PERIOD"
-
-		# Send SIGKILL to all jobs
-		kill -SIGKILL "${PIDS[@]/#/-}" 2>/dev/null || true
-
-		_delete_runtime_data
-		_status "$APP ($$) terminated after $(_get_runtime)"
-		exit 1
-	fi
-
-	[ "$signal" != "NO_SIGNAL" ] && _status "$signal received."
+	case "$signal" in
+		"")          _status "Error: Unexpected termination" ERROR ;;
+		"NO_SIGNAL") :                                             ;;
+		"SIGINT")    echo                                          ;;&
+		*)           _status "$signal received."                   ;;
+	esac
 
 	# Send SIGTERM to all jobs
 	_stop_app
@@ -1332,6 +1313,17 @@ _terminate() {
 
 	# Wait until all jobs have terminated
 	while :; do
+		# Observation: When 'wait' is executed in the main loop at the bottom of this script
+		# and an untrapped signal whose default action is process termination (e.g. SIGSEGV) arrives,
+		# _terminate() is executed due to the EXIT trap.
+		# In that case, Bash doesn't receive SIGCHLD and therefore doesn't automatically reap child processes.
+		# The zombie processes are then considered to be still running when probing with 'kill -0'.
+		# Bash also reaps child processes when a new subprocess is forked and exits.
+		# That's because Bash internally calls 'wait' to obtain the subprocess's exit code.
+		# This 'wait' call may not only reap the subprocess, but also any other child processes
+		# that have terminated in the meantime.
+		[ -z "$signal" ] && (:)
+
 		for i in "${!PIDS[@]}"; do
 			# Is job still running?
 			if ! kill -0 -"${PIDS[i]}" 2>/dev/null; then
@@ -1367,10 +1359,10 @@ _terminate() {
 }
 
 # Set signal handlers
-trap "      _terminate        " EXIT    # Unexpected signals and errors
-trap "      _terminate SIGHUP " SIGHUP  # Stop supervisor when receiving SIGHUP
-trap "echo; _terminate SIGINT " SIGINT  # Stop supervisor when receiving SIGINT
-trap "      _terminate SIGTERM" SIGTERM # Stop supervisor when receiving SIGTERM
+trap "_terminate        " EXIT    # Unexpected signals and errors
+trap "_terminate SIGHUP " SIGHUP  # Stop supervisor when receiving SIGHUP
+trap "_terminate SIGINT " SIGINT  # Stop supervisor when receiving SIGINT
+trap "_terminate SIGTERM" SIGTERM # Stop supervisor when receiving SIGTERM
 
 # Running as daemon?
 if (( FOREGROUND == 0 )); then
