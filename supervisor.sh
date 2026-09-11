@@ -617,7 +617,7 @@ _show_process_status_table() {
 
 	# Get boot time
 	while read -r line; do
-		if [[ $line =~ ^btime\ (.+) ]]; then
+		if [[ "$line" =~ ^btime\ (.+) ]]; then
 			boot_time=${BASH_REMATCH[1]}
 			break
 		fi
@@ -1246,7 +1246,7 @@ if _acquire_lock; then
 	_exit_if_unclean_shutdown skip-lock-check
 	_exit_if_app_is_already_running
 else
-	if [[ $FOREGROUND == 1 || $1 != "--daemon" ]]; then
+	if [[ "$FOREGROUND" -eq 1 || "$1" != "--daemon" ]]; then
 		echo "Error: Could not acquire lock. $APP is already being started by another process."
 		echo
 		exit 1
@@ -1539,7 +1539,7 @@ while :; do
 
 	for i in "${!PIDS[@]}"; do
 		if [ "${PIDS[i]}" == "$JOB_PID" ]; then
-			if [[ $JOB_EXIT_CODE -gt 0 && ! -f "$RUN_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
+			if [[ "$JOB_EXIT_CODE" -gt 0 && ! -f "$RUN_DIR/${JOB_NAME[i]}.pid.stop" ]]; then
 				_status "Job failed with exit code $JOB_EXIT_CODE: ${JOB_NAME[i]} (${PIDS[i]})" ERROR
 			else
 				if [ -f "$RUN_DIR/${JOB_NAME[i]}.pid.stop" ]; then
@@ -1554,7 +1554,7 @@ while :; do
 			_kill_process_group "$i"
 
 			# Restart job if necessary
-			if [[ "${JOB_RESTART[i]}" == "error" && $JOB_EXIT_CODE -gt 0 || "${JOB_RESTART[i]}" == "on" ]]; then
+			if [[ "${JOB_RESTART[i]}" == "error" && "$JOB_EXIT_CODE" -gt 0 || "${JOB_RESTART[i]}" == "on" ]]; then
 				if [ ! -f "$RUN_DIR/${JOB_NAME[i]}.pid.stop" ]; then
 					# Job termination is unexpected
 					# Restart job if limit is not already reached
