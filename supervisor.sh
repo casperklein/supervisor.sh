@@ -18,7 +18,7 @@ shopt -s nullglob        # Return nothing if '*' does not expand
 # Global variables
 APP="supervisor.sh"
 APP_PATH=$(readlink -f "$0")
-VER=0.16
+VER=0.17
 
 : "${RUN_DIR:=/run/$APP}" # Allow RUN_DIR override via ENV
 PID_FILE="$RUN_DIR/$APP.pid"
