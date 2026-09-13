@@ -8,7 +8,7 @@
 echo "Bash Version:  $BASH_VERSION"
 echo "User:          $(id -un) ($(id -u))"
 echo "Configuration: $(readlink -f "$CONFIG_FILE")"
-echo "PID Directory: ${RUN_DIR:-/run/supervisor.sh}"
+echo "Runtime data:  ${RUN_DIR:-/run/supervisor.sh/}"
 
 # Check which Bash builtins are available
 for i in rm sleep; do
