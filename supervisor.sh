@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Dependencies: Linux kernel, yq, bash >= 5.1
+# Dependencies: Linux kernel, yq, Bash >= 5.1
 # Bash 5.1 or later is required to support 'wait -p'
 
 # Also these common core utilities are required: cat mkdir readlink rm setsid sleep tail
@@ -186,7 +186,7 @@ _read_config_file() {
 		# Prevent problematic job (file) names
 		# 1. Dotfiles are excluded from globbing (*.pid)
 		# 2. A filename cannot contain a slash
-		# 3. Whitespaces in job names do not work with bash completion
+		# 3. Whitespaces in job names do not work with Bash completion
 		if [[ ! "${JOB_NAME[i]}" =~ ^[^./[:space:]][^/[:space:]]*$ ]]; then
 			__show_error_and_exit "Parsing job #$((++i)) configuration failed. The job name must not start with a dot and must not contain whitespace or slashes."
 		fi
@@ -350,7 +350,7 @@ _acquire_lock() {
 _get_starttime_from_pid() {
 	local pid=$1 stat
 
-	# Non bash alternative
+	# Non Bash alternative
 	# stat -c %Y /proc/$pid
 
 	# man proc_pid_stat

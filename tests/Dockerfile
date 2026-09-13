@@ -64,7 +64,7 @@ USER supervisor
 ENV RUN_DIR=/home/supervisor/supervisor.sh
 
 RUN <<EOF
-	# Enable bash completion
+	# Enable Bash completion
 	echo "source /supervisor/supervisor-completion.bash" >> ~/.bashrc
 EOF
 
