@@ -875,6 +875,8 @@ _start_job_cli() {
 				return 1
 			fi >&2
 
+			_status "Starting job: $name"
+
 			# Create marker file
 			_set_job_state "start" "$RUN_DIR/$name"
 
@@ -884,12 +886,9 @@ _start_job_cli() {
 				# Delete marker file
 				rm -f "$pid_file.start"
 
-				echo "Error: Triggering job start failed."
-				echo
+				_status "Error: Triggering job start failed."
 				return 1
 			fi >&2
-
-			_status "Starting job: $name"
 
 			# Wait until job has started
 			SECONDS=0 # Increments automatically
@@ -900,19 +899,18 @@ _start_job_cli() {
 
 					_status "Error: Job was not started within 10 seconds. Check $APP log."
 					return 1
-				fi
+				fi >&2
 				sleep 0.2
 			done
 
 			pid=$(<"$pid_file")
-			if [ -z "$pid" ]; then
-				# $name.pid.start file was deleted, but PID file is empty.
-				# This happens when a job fails to start because its log file is not writable.
-				_status "Error: Job failed to start."
-				return 1
+
+			# $pid might be empty if the job exited almost immediately or the job's log file is not writable
+			if [ -n "$pid" ]; then
+				pid=" ($pid)"
 			fi
 
-			_status "Job started: $name ($pid)"
+			_status "Job started: $name$pid"
 			return 0
 		else
 			echo "Error: $name is already running." >&2
