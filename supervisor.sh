@@ -1411,7 +1411,7 @@ _start_job() {
 		return 0
 	fi
 
-	# setsid --> run each job in his own process group
+	# setsid --> run each job in it's own process group
 	setsid bash -c "${JOB_COMMAND[i]}" &>>"${JOB_LOGFILE[i]}" &
 
 	# Save PID
