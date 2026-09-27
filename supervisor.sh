@@ -960,7 +960,7 @@ _stop_job_cli() {
 			until [[ -f "$pid_file.stopped" || ! -f "$pid_file" ]]; do
 				if (( SECONDS >= 10 )); then
 					_status "Job terminated: $name ($pid)"
-					_status "Error: Runtime files were not cleaned up by $APP within 10 seconds."
+					_status "Error: Runtime files were not cleaned up by $APP within 10 seconds." >&2
 					return 1
 				fi
 				if _is_process_running "$pid_file"; then
