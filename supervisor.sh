@@ -389,7 +389,7 @@ _is_process_running() {
 	if [ "$pid_file" == "$PID_FILE" ]; then
 		if kill -0 "$(<"$pid_file")" 2>/dev/null; then
 			if _check_process_starttime "$pid_file"; then
-				# supervisor is runnning
+				# supervisor is running
 				return 0
 			fi
 		fi
@@ -795,7 +795,7 @@ _show_process_status_table() {
 			esac
 			__str_repeat " " $(( padding_pid - ${#pid[i]} + 1 ))
 
-			# 4th colum (Runtime)
+			# 4th column (Runtime)
 			echo -n "│ "
 			case "${runtime[i]}" in
 				Runtime) printf "%s" "$white${runtime[i]}$reset" ;;
