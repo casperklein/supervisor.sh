@@ -8,7 +8,9 @@
 ## Description
 
 `supervisor.sh` is a process supervisor inspired by [Supervisord](https://supervisord.org/) written in Bash.
-It's a lightweight _almost pure_ Bash solution, providing basic functionality to supervise processes (called jobs). The configuration is done in a YAML configuration file. By default, all jobs are automatically started and, in case of an error (exit code > 0), restarted.
+It's a lightweight _almost pure_ Bash solution, providing basic functionality to supervise processes (called jobs). The configuration is done in a YAML file.
+
+By default, all jobs are started automatically. If a job fails (exit code > 0), it will be restarted up to 3 times (configurable).
 
 For environments like a Docker container, where minimal overhead is desired, the dependency on `yq` can be removed by converting the YAML configuration to Bash.
 
