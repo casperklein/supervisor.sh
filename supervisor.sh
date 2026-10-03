@@ -903,11 +903,12 @@ _start_job_cli() {
 				sleep 0.2
 			done
 
-			pid=$(<"$pid_file")
-
-			# $pid might be empty if the job exited almost immediately or the job's log file is not writable
-			if [ -n "$pid" ]; then
-				pid=" ($pid)"
+			# Show PID if available.
+			# PID file might not exist when supervisor has stopped
+			# PID file might be empty if the job exited almost immediately
+			# PID file might be empty if the job's log file is not writable
+			if pid=$(cat "$pid_file" 2>/dev/null); then
+				[ -n "$pid" ] && pid=" ($pid)"
 			fi
 
 			_status "Job started: $name$pid"
