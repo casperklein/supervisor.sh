@@ -26,7 +26,7 @@ LOCK_DIR="$RUN_DIR/.lock"
 
 CONFIG_FILE_BASH=0
 FOREGROUND=0
-HERTZ=$(getconf CLK_TCK 2>/dev/null || echo "100") # CLK_TCK --> Ticks per second (usually 100)
+HERTZ=$(getconf CLK_TCK 2>/dev/null || echo "100") # CLK_TCK --> Clock ticks per second (usually 100)
 NO_COLOR=0
 PIDS=()
 PIDS_STARTTIME=()
@@ -347,6 +347,7 @@ _acquire_lock() {
 	return 0
 }
 
+# Get start time from PID in clock ticks
 _get_starttime_from_pid() {
 	local pid=$1 stat
 
@@ -361,20 +362,20 @@ _get_starttime_from_pid() {
 	stat=${stat#*)}
 	read -r -a stat <<<"$stat"
 
-	# Output field 20 (starttime) in seconds
-	echo "$(( stat[19] / HERTZ ))"
+	# Output field 20 (starttime)
+	echo "${stat[19]}"
 }
 
 # After a process terminates, the OS may assign its PID to a different process.
 # Verify the saved process start time to ensure the PID still belongs to the expected process.
 _check_process_starttime() {
-	local pid_file=$1 starttime_app starttime_pid
+	local pid_file=$1 starttime starttime_pid
 
 	if [ -f "$pid_file.starttime" ]; then
-		starttime_app=$(<"$pid_file.starttime")
+		starttime=$(<"$pid_file.starttime")
 		starttime_pid=$(_get_starttime_from_pid "$(<"$pid_file")")
 
-		if [ "$starttime_app" == "$starttime_pid" ]; then
+		if [ "$starttime" == "$starttime_pid" ]; then
 			return 0
 		fi
 	fi
@@ -615,7 +616,7 @@ _show_process_status_table() {
 	local name=("Name") state=("State") pid=("PGID") runtime=("Runtime") logfile=("Logfile")
 	local line boot_time i basename ec starttime current_time orphaned=()
 
-	# Get boot time
+	# Get boot time as Unix timestamp (seconds)
 	while read -r line; do
 		if [[ "$line" =~ ^btime\ (.+) ]]; then
 			boot_time=${BASH_REMATCH[1]}
@@ -638,6 +639,7 @@ _show_process_status_table() {
 				logfile+=( "$(readlink -f "/proc/${pid[-1]}/fd/1" || true)" )
 
 				starttime=$(<"$i.starttime")
+				starttime=$(( starttime / HERTZ )) # Convert clock ticks to seconds
 				printf -v current_time '%(%s)T' -1
 				runtime+=( "$(_get_runtime "$(( current_time - (boot_time + starttime) ))")" )
 				;;
@@ -1500,9 +1502,9 @@ _kill_process_group() {
 _clean_up_job() {
 	local i=$1 now _
 
-	# Save runtime
+	# Save runtime in seconds
 	IFS=. read -r now _ </proc/uptime
-	_get_runtime "$(( now - PIDS_STARTTIME[i] ))" >"$RUN_DIR/${JOB_NAME[i]}.pid.runtime"
+	_get_runtime "$(( now - PIDS_STARTTIME[i] / HERTZ ))" >"$RUN_DIR/${JOB_NAME[i]}.pid.runtime"
 
 	unset "PIDS_STARTTIME[$i]"
 	unset "PIDS[$i]"
