@@ -614,7 +614,7 @@ _get_runtime() {
 
 _show_process_status_table() {
 	local name=("Name") state=("State") pid=("PGID") runtime=("Runtime") logfile=("Logfile")
-	local line boot_time i basename ec starttime current_time orphaned=()
+	local line boot_time i basename ec starttime orphaned=()
 
 	# Get boot time as Unix timestamp (seconds)
 	while read -r line; do
@@ -640,8 +640,7 @@ _show_process_status_table() {
 
 				starttime=$(<"$i.starttime")
 				starttime=$(( starttime / HERTZ )) # Convert clock ticks to seconds
-				printf -v current_time '%(%s)T' -1
-				runtime+=( "$(_get_runtime "$(( current_time - (boot_time + starttime) ))")" )
+				runtime+=( "$(_get_runtime "$(( EPOCHSECONDS - (boot_time + starttime) ))")" )
 				;;
 
 			1)
