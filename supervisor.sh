@@ -359,7 +359,7 @@ _get_starttime_from_pid() {
 	IFS= read -r stat < "/proc/$pid/stat"
 
 	# Remove the first two fields, because the second field (the filename of the executable, in parentheses) can contain whitespaces.
-	stat=${stat#*)}
+	stat=${stat##*)}
 	read -r -a stat <<<"$stat"
 
 	# Output field 20 (starttime)
