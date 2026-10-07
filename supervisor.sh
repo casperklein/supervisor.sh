@@ -1252,7 +1252,7 @@ else
 		exit 1
 	fi >&2
 
-	# FOREGROUND == 0 && $1 == "--daemon" --> log already acquired by parent process, see blow.
+	# FOREGROUND == 0 && $1 == "--daemon" --> Lock already acquired by parent process, see blow.
 fi
 
 # Run as daemon
