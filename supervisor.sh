@@ -356,7 +356,7 @@ _get_starttime_from_pid() {
 
 	# man proc_pid_stat
 	# Field 22 starttime: The time the process started after system boot. The value is expressed in clock ticks (divide by sysconf(_SC_CLK_TCK))
-	IFS= read -r stat < "/proc/$pid/stat"
+	{ IFS= read -r stat < "/proc/$pid/stat"; } 2>/dev/null || return 0
 
 	# Remove the first two fields, because the second field (the filename of the executable, in parentheses) can contain whitespaces.
 	stat=${stat##*)}
@@ -1267,8 +1267,6 @@ if [ "$1" != "--daemon" ]; then
 
 	cd /
 	setsid bash "$APP_PATH" --config "$CONFIG_FILE" "--daemon" &
-	echo "$!" >"$PID_FILE"
-	_get_starttime_from_pid "$!" >"$PID_FILE.starttime"
 
 	# Do not release lock. This will be handled by the new daemon process started above.
 	trap "" EXIT
@@ -1378,11 +1376,13 @@ if (( FOREGROUND == 0 )); then
 	else
 		exec &>> "$LOG_FILE"
 	fi
-else
-	echo "$$" >"$PID_FILE"
-	_get_starttime_from_pid "$$" >"$PID_FILE.starttime"
 fi
 
+# Create runtime files
+echo                    "$$" >"$PID_FILE"
+_get_starttime_from_pid "$$" >"$PID_FILE.starttime"
+
+# Startup complete, release lock.
 _status "$APP $VER started ($$)"
 _release_lock
 
@@ -1400,7 +1400,7 @@ _exit_app_if_job_is_required() {
 }
 
 _start_job() {
-	local i=$1
+	local i=$1 now _
 
 	# Prevent restart loop if log file is not writable
 	if ! { : >> "${JOB_LOGFILE[i]}"; } 2>/dev/null; then
@@ -1422,6 +1422,12 @@ _start_job() {
 
 	# Save start time
 	PIDS_STARTTIME[i]=$(_get_starttime_from_pid "${PIDS[i]}")
+	if [ -z "${PIDS_STARTTIME[i]}" ]; then
+		# Fallback if _get_starttime_from_pid fails. This can happen if the process terminates very quickly.
+		IFS=. read -r now _ </proc/uptime
+		PIDS_STARTTIME[i]=$(( now * HERTZ ))
+	fi
+
 	echo "${PIDS_STARTTIME[i]}" >"$RUN_DIR/${JOB_NAME[i]}.pid.starttime"
 
 	_set_job_state "started" "$RUN_DIR/${JOB_NAME[i]}"
