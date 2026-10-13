@@ -1275,9 +1275,29 @@ if [ "$1" != "--daemon" ]; then
 	exit 0
 fi
 
+_skip_grace_period() {
+	trap "echo" SIGINT
+	echo
+
+	# Skip the grace period when not running as a daemon. The check below is not strictly necessary.
+	# The daemon is started in the background using '&' from a non-interactive shell (without job control),
+	# so it inherits SIGINT and SIGQUIT as ignored (SIG_IGN).
+	# A signal that is ignored on entry cannot be caught or trapped, so the SIGINT trap in _terminate() is ineffective.
+	# Verify with:
+	#   - grep -E 'Sig(Ign|Cgt)' /proc/$(</run/supervisor.sh/supervisor.sh.pid)/status
+	#   - trap -p
+	if (( FOREGROUND == 1 )); then
+		SIGTERM_GRACE_PERIOD=0
+		_status 'SIGINT received. Skipping grace period.'
+	fi
+}
+
 _terminate() {
 	# Termination is now in progress. Disable traps to prevent loops and race conditions (SIGUSR1).
 	trap "" SIGHUP SIGINT SIGTERM SIGUSR1 EXIT
+
+	# Skip the grace period when receiving SIGINT
+	trap "_skip_grace_period" SIGINT
 
 	local signal=${1:-} i
 
