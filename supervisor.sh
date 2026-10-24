@@ -1420,7 +1420,7 @@ _exit_app_if_job_is_required() {
 }
 
 _start_job() {
-	local i=$1 now _
+	local i=$1 now
 
 	# Prevent restart loop if log file is not writable
 	if ! { : >> "${JOB_LOGFILE[i]}"; } 2>/dev/null; then
@@ -1525,7 +1525,7 @@ _kill_process_group() {
 }
 
 _clean_up_job() {
-	local i=$1 now _
+	local i=$1 now
 
 	# Save runtime in seconds
 	IFS=. read -r now _ </proc/uptime
