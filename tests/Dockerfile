@@ -3,7 +3,7 @@ FROM $BASE_IMAGE
 
 ARG BASE_IMAGE=alpine
 ARG PACKAGES="curl dumb-init procps htop grep"
-ARG YQ_VERSION=v4.54.1
+ARG YQ_VERSION=v4.54.2
 ARG TARGETARCH
 
 RUN <<EOF
