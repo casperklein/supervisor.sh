@@ -9,7 +9,7 @@ _supervisor_sh() {
 
 	if (( COMP_CWORD == 1 )); then
 		mapfile -t COMPREPLY < <(compgen -W "$args" -- "$cur")
-	elif [[ "$prev2" =~ ^(start|stop|restart)$ ]]; then
+	elif [[ "$prev2" =~ ^(start|stop|restart|status)$ ]]; then
 		return 0
 	else
 		local app="supervisor.sh"
@@ -21,7 +21,8 @@ _supervisor_sh() {
 				mapfile -t COMPREPLY < <(compgen -f -- "$cur")
 				;;
 
-			-h|--help|-v|--version|status|fix|lint|log|logs|convert)
+			# No further completion
+			-h|--help|-v|--version|fix|lint|log|logs|convert)
 				return 0
 				;;
 
@@ -41,6 +42,17 @@ _supervisor_sh() {
 					basename=${i##*/}
 					name="${basename:0:-4}"
 					if [[ "$name" != "*" && "$name" != "$app" && ! -f "$i.stopped" ]]; then
+						jobs+="$name "
+					fi
+				done
+				mapfile -t COMPREPLY < <(compgen -W "$jobs" -- "$cur")
+				;;
+
+			status)
+				for i in "$run_dir"/*.pid; do
+					basename=${i##*/}
+					name="${basename:0:-4}"
+					if [[ "$name" != "*" && "$name" != "$app" ]]; then
 						jobs+="$name "
 					fi
 				done

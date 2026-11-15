@@ -68,12 +68,13 @@ _usage() {
 
 		Commands:
 		  start            Start $APP as daemon.
-		  start <job>      Start job.
+		  start   <job>    Start job.
 		  stop             Stop $APP.
-		  stop  <job>      Stop job.
+		  stop    <job>    Stop job.
 		  restart          Restart daemon.
 		  restart <job>    Restart job.
 		  status           Show process status table.
+		  status  <job>    Show single job status.
 		  fix              Fix unclean shutdown.
 		  lint             Validate and display the full configuration, including implicit default values.
 		  log              Show continuously the $APP log.
@@ -613,6 +614,27 @@ _get_runtime() {
 }
 
 _show_process_status_table() {
+	# Show single job status if $1 is given
+	if [ -n "${1:-}" ]; then
+		if ! _is_app_running; then
+			echo "Error: $APP is not running." >&2
+			exit 1
+		fi
+
+		if [ -s "$RUN_DIR/$1.pid" ]; then
+			echo "Job '$1' is running: $(<"$RUN_DIR/$1.pid")"
+			exit 0
+		fi
+
+		if [ -f "$RUN_DIR/$1.pid" ]; then
+			echo "Job '$1' is not running."
+		else
+			echo "Error: Job '$1' not found." >&2
+		fi
+
+		exit 1
+	fi
+
 	local name=("Name") state=("State") pid=("PGID") runtime=("Runtime") logfile=("Logfile")
 	local line boot_time i basename ec starttime orphaned=()
 
@@ -1109,7 +1131,7 @@ case "${1:-}" in
 
 	fix)    _fix_unclean_shutdown; exit ;;
 
-	status) _exit_if_unclean_shutdown; _show_process_status_table; exit ;;
+	status) _exit_if_unclean_shutdown; _show_process_status_table "${2:-}"; exit ;;
 
 	start)
 		# Start daemon or job?

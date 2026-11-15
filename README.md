@@ -66,15 +66,16 @@ Options:
 
 Commands:
   start            Start supervisor.sh as daemon.
-  start <job>      Start job.
+  start   <job>    Start job.
   stop             Stop supervisor.sh.
-  stop  <job>      Stop job.
+  stop    <job>    Stop job.
   restart          Restart daemon.
   restart <job>    Restart job.
-  status           Show process states.
+  status           Show process status table.
+  status  <job>    Show single job status.
   fix              Fix unclean shutdown.
   lint             Validate and display the full configuration, including implicit default values.
-  log              Show continuously the supervisor.sh log (only for daemon mode)
+  log              Show continuously the supervisor.sh log.
   logs             Show continuously the supervisor.sh log + job logs.
   convert          Convert the YAML configuration file to Bash.
                    This allows the usage without the 'yq' dependency.
